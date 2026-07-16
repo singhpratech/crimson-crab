@@ -290,7 +290,10 @@ pub struct BatchResult {
 /// Results arrive in any order; key them by `custom_id`, never by position. The
 /// stream yields one item per non-empty line.
 pub struct BatchResults {
+    #[cfg(not(target_arch = "wasm32"))]
     inner: Pin<Box<dyn Stream<Item = reqwest::Result<Bytes>> + Send>>,
+    #[cfg(target_arch = "wasm32")]
+    inner: Pin<Box<dyn Stream<Item = reqwest::Result<Bytes>>>>,
     buffer: Vec<u8>,
     finished: bool,
 }

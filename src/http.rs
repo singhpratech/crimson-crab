@@ -7,9 +7,13 @@
 //! errors, timeouts, `408`/`409`/`429`, and `>= 500` responses are retried up
 //! to `max_retries` times, honoring a `retry-after` header when present.
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::future::Future;
+#[cfg(not(target_arch = "wasm32"))]
 use std::pin::Pin;
+#[cfg(not(target_arch = "wasm32"))]
 use std::sync::{Arc, Mutex, MutexGuard};
+#[cfg(not(target_arch = "wasm32"))]
 use std::task::{Context, Poll, Waker};
 use std::time::Duration;
 
@@ -230,21 +234,33 @@ fn backoff_delay(attempt: u32) -> Duration {
 /// The SDK deliberately avoids a tokio dependency, so this provides the small
 /// amount of timing the retry loop needs without one.
 async fn sleep(duration: Duration) {
-    if duration.is_zero() {
-        return;
+    // wasm32-unknown-unknown has no threads: retry immediately rather than
+    // panicking in std::thread::spawn. Browsers apply their own backpressure.
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = duration;
     }
-    Timer::new(duration).await;
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if duration.is_zero() {
+            return;
+        }
+        Timer::new(duration).await;
+    }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 struct TimerState {
     done: bool,
     waker: Option<Waker>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 struct Timer {
     state: Arc<Mutex<TimerState>>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Timer {
     fn new(duration: Duration) -> Self {
         let state = Arc::new(Mutex::new(TimerState {
@@ -264,6 +280,7 @@ impl Timer {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Future for Timer {
     type Output = ();
 
@@ -278,6 +295,7 @@ impl Future for Timer {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// Locks a mutex, recovering the guard on poison rather than panicking (the SDK
 /// forbids `unwrap`/`expect` in library code).
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {

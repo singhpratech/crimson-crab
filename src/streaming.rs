@@ -828,7 +828,22 @@ impl Accumulator {
 // ---------------------------------------------------------------------------
 
 /// The boxed byte stream a [`MessageStream`] reads from.
+/// `Send` on native targets, nothing on wasm (reqwest's wasm streams are not
+/// `Send`; single-threaded wasm doesn't need the bound).
+#[cfg(not(target_arch = "wasm32"))]
+pub trait MaybeSend: Send {}
+#[cfg(not(target_arch = "wasm32"))]
+impl<T: Send> MaybeSend for T {}
+/// `Send` on native targets, nothing on wasm.
+#[cfg(target_arch = "wasm32")]
+pub trait MaybeSend {}
+#[cfg(target_arch = "wasm32")]
+impl<T> MaybeSend for T {}
+
+#[cfg(not(target_arch = "wasm32"))]
 type ByteStream = Pin<Box<dyn Stream<Item = Result<Bytes>> + Send>>;
+#[cfg(target_arch = "wasm32")]
+type ByteStream = Pin<Box<dyn Stream<Item = Result<Bytes>>>>;
 
 /// A [`Stream`] of [`StreamEvent`]s decoded from a streaming `POST /v1/messages`
 /// response, which simultaneously accumulates a final [`Message`].
@@ -895,7 +910,7 @@ impl MessageStream {
     #[doc(hidden)]
     pub fn from_byte_stream<S>(stream: S) -> Self
     where
-        S: Stream<Item = Result<Bytes>> + Send + 'static,
+        S: Stream<Item = Result<Bytes>> + MaybeSend + 'static,
     {
         Self::from_pinned(Box::pin(stream))
     }

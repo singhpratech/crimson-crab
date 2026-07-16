@@ -226,9 +226,13 @@ impl ClientBuilder {
         // streaming response is not truncated once total elapsed time crosses a
         // deadline. The total deadline is applied per-request on the unary paths
         // inside `HttpClient` (see `request_timeout`).
-        let http_client = reqwest::Client::builder()
-            .read_timeout(self.timeout)
-            .build()?;
+        let builder = reqwest::Client::builder();
+        // reqwest's wasm ClientBuilder has no timeout knobs (the browser's fetch
+        // governs request lifetimes there), so the idle read timeout is
+        // native-only.
+        #[cfg(not(target_arch = "wasm32"))]
+        let builder = builder.read_timeout(self.timeout);
+        let http_client = builder.build()?;
         let http = HttpClient::new(
             http_client,
             self.base_url,
