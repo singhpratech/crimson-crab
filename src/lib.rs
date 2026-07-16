@@ -132,7 +132,11 @@ pub use streaming::{ContentDelta, MessageStream, StreamEvent};
 pub mod prelude {
     pub use crate::api::{CountTokensRequest, CountTokensResponse, MessagesRequest};
     pub use crate::client::{Client, ClientBuilder};
-    pub use crate::error::{ApiError, Error, Result};
+    // `Error` and the `Result<T>` alias are deliberately NOT re-exported here:
+    // a glob import that shadows `std::result::Result` breaks common downstream
+    // patterns like `Result<Event, E>`. Reach them as `crimson_crab::Error` /
+    // `crimson_crab::Result` instead.
+    pub use crate::error::ApiError;
     pub use crate::streaming::{ContentDelta, MessageStream, StreamEvent};
     pub use crate::types::cache::{CacheControl, CacheTtl};
     pub use crate::types::content::{ContentBlock, ContentBlockParam};
@@ -143,6 +147,8 @@ pub mod prelude {
     pub use crate::types::output::{Effort, OutputConfig, OutputFormat};
     pub use crate::types::thinking::{ThinkingConfig, ThinkingDisplay};
     pub use crate::types::tool::{Tool, ToolChoice, ToolResultContent, ToolUnion};
+    // Tool-loop types (the crate's most common use case) belong in the prelude.
+    pub use crate::types::content::{ToolResultBlockParam, ToolUseBlock};
 }
 
 /// Compiles the `README.md` code samples as part of `cargo test --doc` so the

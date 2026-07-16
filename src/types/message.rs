@@ -112,7 +112,10 @@ pub struct StopDetails {
 /// ```
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Usage {
-    /// Number of input tokens billed.
+    /// Number of **uncached** input tokens billed at the full rate.
+    ///
+    /// This does **not** include the cache buckets: the total prompt size is
+    /// `input_tokens + cache_creation_input_tokens + cache_read_input_tokens`.
     pub input_tokens: u64,
     /// Number of output tokens billed.
     pub output_tokens: u64,

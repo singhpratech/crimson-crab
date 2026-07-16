@@ -38,4 +38,4 @@ Initial release.
 - **Examples.** `basic`, `streaming`, `tool_use`, `thinking`, `prompt_caching`,
   and `structured_output`.
 
-[0.1.0]: https://github.com/example/crimson-crab/releases/tag/v0.1.0
+[0.1.0]: https://github.com/singhpratech/crimson-crab/releases/tag/v0.1.0

@@ -199,6 +199,11 @@ impl ClientBuilder {
     }
 
     /// Sets the maximum number of automatic retries (default 2; `0` disables).
+    ///
+    /// Retryable failures (connection errors, 408/409/429 and 5xx statuses) are
+    /// retried with full-jitter exponential backoff, honoring a `retry-after`
+    /// header up to 60 seconds. On `wasm32` targets there is no timer available,
+    /// so retries fire immediately and `retry-after` is not awaited.
     pub fn max_retries(mut self, max_retries: u32) -> Self {
         self.max_retries = max_retries;
         self

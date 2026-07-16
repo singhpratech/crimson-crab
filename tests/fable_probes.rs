@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 use crimson_crab::prelude::*;
 use crimson_crab::types::{CacheControl, SystemPrompt, ThinkingConfig, Tool, ToolChoice};
+use crimson_crab::Error;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
