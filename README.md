@@ -10,7 +10,7 @@ Everything the Claude API can do, in idiomatic Rust — streaming, tool use, ext
 [![license](https://img.shields.io/crates/l/crimson-crab.svg)](#license)
 [![MSRV](https://img.shields.io/badge/MSRV-1.75-blue.svg)](#minimum-supported-rust-version)
 
-**187 tests · zero clippy warnings · a panic-free library (`unwrap`/`expect`/`panic` denied at compile time) · MSRV 1.75 · MIT OR Apache-2.0**
+**191 tests · zero clippy warnings · a panic-free library (`unwrap`/`expect`/`panic` denied at compile time) · MSRV 1.75 · MIT OR Apache-2.0**
 
 - **Docs:** [docs.rs/crimson-crab](https://docs.rs/crimson-crab)
 - **Site:** [singhpratech.github.io/crimson-crab](https://singhpratech.github.io/crimson-crab/)
@@ -64,7 +64,7 @@ async fn main() -> crimson_crab::Result<()> {
 - **A tokio-free public API — runs anywhere.** The public surface exposes `futures_core::Stream`, not runtime-specific types; `tokio` is a dev-dependency only. The same builder code compiles for native **and** `wasm32-unknown-unknown` on default features.
 - **Official-SDK-parity retries — production-grade out of the box.** Connection errors, timeouts, `408`/`409`/`429`, and `5xx` are retried with full-jitter exponential backoff (0.5s base, 8s cap) and honor `retry-after` — capped at 60s so a hostile or broken server can't park your retry loop for hours. Streaming requests retry only before the first byte.
 - **Streaming that never truncates mid-generation.** The client uses an *idle* read timeout rather than a total-request deadline, so a long-but-actively-flowing SSE response is never cut off just because total elapsed time crossed a limit.
-- **Tested against real API fixtures.** Every content block and stream event from the wire reference has a serde round-trip test, and every endpoint has `wiremock` coverage — 187 tests, zero clippy warnings, and a library that denies `unwrap`/`expect`/`panic` so it cannot panic on you in production.
+- **Tested against real API fixtures.** Every content block and stream event from the wire reference has a serde round-trip test, and every endpoint has `wiremock` coverage — 191 tests, zero clippy warnings, and a library that denies `unwrap`/`expect`/`panic` so it cannot panic on you in production.
 
 ## Feature coverage
 

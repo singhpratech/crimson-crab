@@ -4,16 +4,16 @@ Goal: become the de-facto Claude SDK for Rust (benchmark: async-openai's 2M+ dow
 
 ## Phase 0 — Pre-launch checklist (before `cargo publish`)
 
-- [ ] Cargo.toml metadata is the storefront: `description` = "The production-grade Rust SDK for Anthropic's Claude API — streaming, tools, thinking, prompt caching, batches"; `keywords = ["claude", "anthropic", "ai", "llm", "sdk"]` (crates.io search weighs name/keywords/description heavily); `categories = ["api-bindings", "asynchronous", "web-programming"]`; `repository`, `homepage` (GitHub Pages URL), `documentation` (docs.rs) all set.
-- [ ] README = launch page (crates.io renders it — it IS the ad).
-- [ ] docs.rs excellence: crate-level docs with runnable-looking quickstart, every module documented, `#[doc = include_str!("../README.md")]` trick considered so README doubles as crate docs.
-- [ ] All 6 examples compile; `cargo publish --dry-run` clean.
-- [ ] GitHub: topics (rust, claude, anthropic, ai, llm, sdk, api-client), About description, social-preview image exported from the landing page, GitHub Pages serving `site/` at the `homepage` URL.
-- [ ] v0.1.0 git tag + GitHub Release with human-written notes.
+- [x] Cargo.toml metadata is the storefront: `description` = "The production-grade Rust SDK for Anthropic's Claude API — streaming, tools, thinking, prompt caching, batches"; `keywords = ["claude", "anthropic", "ai", "llm", "sdk"]` (crates.io search weighs name/keywords/description heavily); `categories = ["api-bindings", "asynchronous", "web-programming"]`; `repository`, `homepage` (GitHub Pages URL), `documentation` (docs.rs) all set.
+- [x] README = launch page (crates.io renders it — it IS the ad).
+- [x] docs.rs excellence: crate-level docs with runnable-looking quickstart, every module documented, `#[doc = include_str!("../README.md")]` trick considered so README doubles as crate docs.
+- [x] All 7 examples compile; `cargo publish --dry-run` clean.
+- [x] GitHub: topics (rust, claude, anthropic, ai, llm, sdk, api-client), About description, social-preview image exported from the landing page, GitHub Pages serving `site/` at the `homepage` URL.
+- [x] v0.1.0 git tag + GitHub Release with human-written notes.
 
 ## Phase 1 — Launch week
 
-Day 1 — publish `v0.1.0`, enable Pages, verify docs.rs built, star-seed from own network.
+Day 1 — ✅ DONE (2026-07-16): v0.1.0 published, Pages live, TWiR PR #8409 opened. Remaining Day-1 item: star-seed from own network.
 Day 2 — **r/rust "Show" post**. Title pattern that front-pages (per research: infra crates with a clear pain story): *"crimson-crab: a production-grade Claude API SDK for Rust — streaming, tools, prompt caching, batches, zero-surprise types"*. Body: the 30-second quickstart, why dedicated beats generic (one paragraph, respectful to rig/genai), the forward-compat story (new models work day one). Reply to every comment fast — responsiveness converts.
 Day 3 — **This Week in Rust**: PR to the TWiR repo adding the crate to "New Crates"/Updates (weekly Wednesday deadline). Massive targeted reach, zero cost.
 Day 4 — **Show HN**: "Show HN: Crimson Crab – a Rust SDK for the Claude API". HN loves Rust + AI infra; the 1,147-pt DeepSeek-OCR and 333-pt Ferrules posts prove the appetite.
