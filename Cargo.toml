@@ -1,0 +1,41 @@
+[package]
+name = "crimson-crab"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["singhpratech"]
+license = "MIT OR Apache-2.0"
+description = "Production-grade Rust SDK for Anthropic's Claude API (Messages, streaming, tools, thinking, prompt caching, batches)."
+keywords = ["claude", "anthropic", "ai", "llm", "sdk"]
+categories = ["api-bindings", "asynchronous", "web-programming::http-client"]
+repository = "https://github.com/singhpratech/crimson-crab"
+homepage = "https://singhpratech.github.io/crimson-crab/"
+readme = "README.md"
+documentation = "https://docs.rs/crimson-crab"
+
+[dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+futures-core = "0.3"
+futures-util = "0.3"
+bytes = "1"
+pin-project-lite = "0.2"
+fastrand = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = [
+    "macros",
+    "rt-multi-thread",
+    "net",
+    "io-util",
+    "time",
+] }
+wiremock = "0.6"
+anyhow = "1"
+
+[features]
+default = ["rustls-tls"]
+rustls-tls = ["reqwest/rustls-tls"]
+native-tls = ["reqwest/native-tls"]
