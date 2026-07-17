@@ -313,6 +313,16 @@ Runnable programs live in [`examples/`](examples): `basic`, `streaming`, `tool_u
 ANTHROPIC_API_KEY=sk-ant-... cargo run --example streaming
 ```
 
+## Build a Claude-powered MCP server
+
+Want a ready-to-run [Model Context Protocol](https://modelcontextprotocol.io) server backed by Claude? Start from the template — a Rust MCP server (`rmcp` + crimson-crab) you can spin up in one click:
+
+**→ [crimson-crab-mcp-template](https://github.com/singhpratech/crimson-crab-mcp-template)** — click *Use this template*, or:
+
+```sh
+cargo generate --git https://github.com/singhpratech/crimson-crab-mcp-template
+```
+
 ## Roadmap
 
 Shipping fast and iterating; spec fidelity and release cadence are the whole point. On deck for v0.2+: the Files API (beta), `schemars`-derived tool schemas with a `#[tool]` macro, typed tool-input deserialization, a tool-runner loop helper, a `batches().poll_until_ended()` convenience, a `parse::<T>()` structured-output helper, the Admin/Usage API, and Vertex/Bedrock transports. The `model` field is an open string everywhere, so any model Anthropic ships works today with zero changes.
