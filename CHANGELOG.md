@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-07-16
+
+### Fixed
+
+- **License.** The MIT license now names `singhpratech` as the copyright holder.
+
+### Changed
+
+- **Docs.** The README links to the companion MCP server template
+  ([crimson-crab-mcp-template](https://github.com/singhpratech/crimson-crab-mcp-template)).
+
 ## [0.1.0] - 2026-07-16
 
 Initial release.
