@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>crimson-crab — the Rust SDK for Claude that can't panic on you</title>
+<meta name="description" content="crimson-crab is a Rust SDK for Anthropic's Claude API built on one hard guarantee: unwrap, expect, panic! and todo! are denied at compile time, so a malformed response is an Error you handle — never a panic in your service. Full Claude surface: streaming, tool use, thinking, prompt caching, batches.">
+<meta name="color-scheme" content="light dark">
+<style>
+  /* ------------------------------------------------------------------ *
+   *  crimson-crab — "Carapace"  ·  the Crimson Crab landing page         *
+   *  Palette: oxidized iron + crimson + rust-oxide + terracotta clay    *
+   * ------------------------------------------------------------------ */
+
+  /* --- Tokens: light (default) --- */
+  :root {
+    --ink:        #F6EDE5;   /* clay paper background            */
+    --ink-2:      #EFE3D8;   /* recessed background             */
+    --carapace:   #FBF4EC;   /* raised panel                    */
+    --carapace-2: #F3E7DB;   /* panel alt                       */
+    --line:       #E1CDBE;   /* hairline                        */
+    --line-soft:  #EBDCCF;
+    --text:       #2B1A12;   /* near-black warm oxide            */
+    --text-2:     #6A5142;   /* secondary                       */
+    --muted:      #8A7061;   /* captions                        */
+    --crimson:    #B5352A;   /* primary accent                  */
+    --crimson-lo: #C74A38;
+    --rust:       #A6521F;   /* rust-oxide                      */
+    --clay:       #C6753E;   /* terracotta                      */
+    --clay-soft:  #E7CDB6;
+    --on-accent:  #FBF1E9;
+    --focus:      #B5352A;
+
+    /* crab mark */
+    --shell:      #B5352A;
+    --shell-edge: #7E2018;
+    --claw:       #A6521F;
+    --claw-edge:  #6E340F;
+    --limb:       #C6753E;
+    --eye:        #2B1A12;
+
+    /* code */
+    --code-bg:    #FCF5ED;
+    --code-line:  #E7D7C8;
+    --c-text:     #43301F;
+    --c-kw:       #B5352A;
+    --c-type:     #A6521F;
+    --c-str:      #4F6B34;
+    --c-fn:       #7A4A2E;
+    --c-num:      #A6521F;
+    --c-com:      #9C8474;
+    --c-punc:     #6A5142;
+
+    --maxw: 1120px;
+    --font-display: "Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,"Times New Roman",serif;
+    --font-body: -apple-system,"Seravek","Segoe UI",system-ui,"Helvetica Neue",Arial,sans-serif;
+    --font-mono: ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,"Liberation Mono",monospace;
+  }
+
+  /* --- Tokens: dark (primary identity) --- */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink:        #150E0B;
+      --ink-2:      #1B1310;
+      --carapace:   #221713;
+      --carapace-2: #2A1C16;
+      --line:       #3A281F;
+      --line-soft:  #2E1F19;
+      --text:       #F3E7DC;
+      --text-2:     #C6AC9C;
+      --muted:      #9E8375;
+      --crimson:    #E4655A;
+      --crimson-lo: #D33B2C;
+      --rust:       #D98A5B;
+      --clay:       #E0A06A;
+      --clay-soft:  #4A3223;
+      --on-accent:  #1A0E0A;
+      --focus:      #E9A98F;
+
+      --shell:      #CB3A2C;
+      --shell-edge: #7E2018;
+      --claw:       #C87A4A;
+      --claw-edge:  #5E2E12;
+      --limb:       #D98A5B;
+      --eye:        #F3E7DC;
+
+      --code-bg:    #1C1310;
+      --code-line:  #33231B;
+      --c-text:     #E7D6C7;
+      --c-kw:       #E96D62;
+      --c-type:     #E3A56E;
+      --c-str:      #A6BE84;
+      --c-fn:       #F0D9C1;
+      --c-num:      #E3A56E;
+      --c-com:      #9A8272;
+      --c-punc:     #B49E90;
+    }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: clamp(15px, 0.6vw + 14px, 17px);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* ambient ferrous plate texture */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 90% at 82% -10%, color-mix(in srgb, var(--crimson) 12%, transparent), transparent 55%),
+      radial-gradient(100% 80% at -10% 110%, color-mix(in srgb, var(--rust) 10%, transparent), transparent 55%);
+  }
+
+  a { color: var(--crimson); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:hover { color: var(--crimson-lo); }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.08; letter-spacing: -0.01em; margin: 0; }
+
+  .wrap { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: clamp(20px, 5vw, 48px); }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .skip {
+    position: absolute; left: 12px; top: -60px;
+    background: var(--crimson); color: var(--on-accent);
+    padding: 10px 16px; border-radius: 8px; z-index: 100;
+    font-family: var(--font-mono); font-size: 0.8rem;
+    transition: top .15s ease;
+  }
+  .skip:focus { top: 12px; color: var(--on-accent); }
+
+  /* ---------------------------------------------------------------- */
+  /*  Header                                                          */
+  /* ---------------------------------------------------------------- */
+  .site-head {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: saturate(1.4) blur(10px);
+    background: color-mix(in srgb, var(--ink) 82%, transparent);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .site-head .bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 20px; height: 62px;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; color: var(--text); }
+  .brand svg { display: block; width: 34px; height: 30px; }
+  .brand .name { font-family: var(--font-mono); font-weight: 600; font-size: 0.98rem; letter-spacing: -0.01em; }
+  .brand .name b { color: var(--crimson); font-weight: 600; }
+  .nav { display: flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 0.8rem; }
+  .nav a {
+    color: var(--text-2); text-decoration: none; padding: 8px 12px; border-radius: 8px;
+    letter-spacing: 0.02em;
+  }
+  .nav a:hover { color: var(--text); background: var(--carapace); }
+  .nav a.gh { color: var(--text); border: 1px solid var(--line); }
+  .nav a.gh:hover { border-color: var(--crimson); }
+  @media (max-width: 680px) { .nav .hide-sm { display: none; } }
+
+  /* crab hover pinch */
+  .brand:hover .claw-l { transform: rotate(-7deg); }
+  .brand:hover .claw-r { transform: rotate(7deg); }
+  .claw-l, .claw-r { transform-box: fill-box; transform-origin: center; transition: transform .35s cubic-bezier(.2,.9,.25,1); }
+  @media (prefers-reduced-motion: reduce) { .claw-l, .claw-r { transition: none; } }
+
+  /* ---------------------------------------------------------------- */
+  /*  Hero                                                            */
+  /* ---------------------------------------------------------------- */
+  .hero { padding-top: clamp(48px, 8vw, 96px); padding-bottom: clamp(40px, 6vw, 80px); }
+  .hero .grid {
+    display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: clamp(24px, 5vw, 64px); align-items: center;
+  }
+  .hero .tag {
+    display: inline-flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+    font-family: var(--font-mono); font-size: 0.74rem; color: var(--muted);
+    letter-spacing: 0.06em; margin-bottom: 22px;
+  }
+  .hero .tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--crimson); display: inline-block; }
+  .hero .tag .crate { color: var(--crimson); font-weight: 600; letter-spacing: 0.02em; }
+  .hero .tag .sep { color: var(--line); }
+  .hero h1 {
+    font-size: clamp(2.5rem, 5.6vw, 4.4rem);
+    letter-spacing: -0.025em;
+    margin: 0 0 22px;
+  }
+  .hero h1 .accent { color: var(--crimson); font-style: italic; }
+  .hero .lede {
+    font-size: clamp(1.05rem, 1.3vw, 1.28rem);
+    color: var(--text-2); max-width: 40ch; margin: 0 0 30px; line-height: 1.55;
+  }
+  .hero .lede b { color: var(--text); font-weight: 600; }
+
+  /* install snippet */
+  .install {
+    display: flex; align-items: stretch; gap: 0; max-width: 420px;
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    background: var(--code-bg); box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 6%, transparent);
+  }
+  .install .cmd {
+    flex: 1; display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    font-family: var(--font-mono); font-size: 0.92rem; color: var(--c-text); min-width: 0;
+  }
+  .install .cmd .prompt { color: var(--crimson); user-select: none; }
+  .install .cmd code { overflow-x: auto; white-space: nowrap; }
+  .install .cmd code b { color: var(--c-kw); font-weight: 600; }
+  .copy {
+    border: 0; border-left: 1px solid var(--line); cursor: pointer;
+    background: var(--carapace); color: var(--text-2);
+    font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 0 18px; transition: background .15s ease, color .15s ease;
+  }
+  .copy:hover { background: var(--crimson); color: var(--on-accent); }
+  .copy.done { background: var(--rust); color: var(--on-accent); }
+
+  .hero .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 0.82rem; letter-spacing: 0.02em;
+    padding: 11px 16px; border-radius: 10px; text-decoration: none;
+    border: 1px solid var(--line); color: var(--text); background: var(--carapace);
+    transition: border-color .15s ease, transform .15s ease, background .15s ease;
+  }
+  .btn:hover { border-color: var(--crimson); transform: translateY(-1px); color: var(--text); }
+  .btn.primary { background: var(--crimson); border-color: var(--crimson); color: var(--on-accent); }
+  .btn.primary:hover { background: var(--crimson-lo); border-color: var(--crimson-lo); color: var(--on-accent); }
+  .btn svg { width: 15px; height: 15px; }
+
+  /* hero crab art */
+  .hero .art { display: flex; justify-content: center; align-items: center; }
+  .hero .art svg { width: 100%; max-width: 380px; height: auto; filter: drop-shadow(0 22px 40px color-mix(in srgb, var(--shell-edge) 40%, transparent)); }
+
+  @media (max-width: 860px) {
+    .hero .grid { grid-template-columns: 1fr; }
+    .hero .art { order: -1; }
+    .hero .art svg { max-width: 240px; }
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Section scaffolding                                             */
+  /* ---------------------------------------------------------------- */
+  section { padding-block: clamp(56px, 8vw, 104px); }
+  .sec-head { max-width: 62ch; margin-bottom: clamp(30px, 4vw, 52px); }
+  .sec-head h2 { font-size: clamp(1.9rem, 3.4vw, 2.7rem); margin-top: 10px; letter-spacing: -0.02em; }
+  .sec-head p { color: var(--text-2); font-size: 1.05rem; margin: 14px 0 0; }
+  .rule { border: 0; border-top: 1px solid var(--line-soft); margin: 0; }
+
+  /* ---------------------------------------------------------------- */
+  /*  Feature grid                                                    */
+  /* ---------------------------------------------------------------- */
+  .features { background: var(--ink-2); }
+  .fgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line-soft); border: 1px solid var(--line-soft); border-radius: 14px; overflow: hidden; }
+  @media (max-width: 820px) { .fgrid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .fgrid { grid-template-columns: 1fr; } }
+  .feat { background: var(--carapace); padding: 26px 24px 28px; position: relative; }
+  .feat::before { content: ""; position: absolute; left: 24px; right: 24px; top: 0; height: 2px; background: linear-gradient(90deg, var(--crimson), var(--clay)); opacity: 0; transition: opacity .2s ease; }
+  .feat:hover::before { opacity: 1; }
+  .feat .ic { color: var(--crimson); margin-bottom: 14px; display: block; }
+  .feat .ic svg { width: 26px; height: 26px; display: block; }
+  .feat h3 { font-family: var(--font-body); font-weight: 600; font-size: 1.05rem; letter-spacing: -0.005em; margin-bottom: 7px; }
+  .feat p { margin: 0; color: var(--text-2); font-size: 0.93rem; line-height: 1.5; }
+  .feat code { font-family: var(--font-mono); font-size: 0.86em; color: var(--rust); background: color-mix(in srgb, var(--rust) 12%, transparent); padding: 1px 5px; border-radius: 4px; }
+
+  /* ---------------------------------------------------------------- */
+  /*  Code examples                                                   */
+  /* ---------------------------------------------------------------- */
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .tab {
+    font-family: var(--font-mono); font-size: 0.82rem; letter-spacing: 0.01em;
+    padding: 9px 15px; border-radius: 9px 9px 0 0; cursor: pointer;
+    background: transparent; border: 1px solid transparent; border-bottom: 0;
+    color: var(--text-2);
+  }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { color: var(--crimson); background: var(--code-bg); border-color: var(--code-line); position: relative; }
+  .tab[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--crimson); }
+
+  .editor { border: 1px solid var(--code-line); border-radius: 14px; overflow: hidden; background: var(--code-bg); }
+  .editor .chrome { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--code-line); }
+  .editor .chrome .dots { display: flex; gap: 7px; }
+  .editor .chrome .dots i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+  .editor .chrome .dots i:nth-child(1) { background: var(--crimson); }
+  .editor .chrome .dots i:nth-child(2) { background: var(--clay); }
+  .editor .chrome .dots i:nth-child(3) { background: var(--rust); }
+  .editor .chrome .file { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); margin-left: 4px; }
+  .editor .chrome .file b { color: var(--text-2); font-weight: 500; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+  pre { margin: 0; overflow-x: auto; }
+  pre code {
+    display: block; padding: 22px clamp(16px, 3vw, 26px);
+    font-family: var(--font-mono); font-size: clamp(0.8rem, 0.4vw + 0.72rem, 0.9rem);
+    line-height: 1.75; color: var(--c-text); white-space: pre; tab-size: 4;
+  }
+  .k  { color: var(--c-kw); }
+  .t  { color: var(--c-type); }
+  .s  { color: var(--c-str); }
+  .fn { color: var(--c-fn); }
+  .n  { color: var(--c-num); }
+  .c  { color: var(--c-com); font-style: italic; }
+  .m  { color: var(--c-kw); }
+  .pu { color: var(--c-punc); }
+
+  /* ---------------------------------------------------------------- */
+  /*  Comparison                                                      */
+  /* ---------------------------------------------------------------- */
+  .why { background: var(--ink-2); }
+  .cmp {
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+    background: var(--carapace);
+  }
+  .cmp .row { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr); }
+  .cmp .row + .row { border-top: 1px solid var(--line-soft); }
+  .cmp .cell { padding: 16px 20px; font-size: 0.94rem; }
+  .cmp .cell:not(:first-child) { border-left: 1px solid var(--line-soft); }
+  .cmp .head .cell { background: var(--carapace-2); font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--muted); }
+  .cmp .head .cell.ours { color: var(--crimson); }
+  .cmp .aspect { color: var(--text); font-weight: 500; }
+  .cmp .v { display: inline-flex; align-items: baseline; gap: 8px; color: var(--text-2); }
+  .cmp .v .mark { font-family: var(--font-mono); font-size: 0.8rem; flex: none; }
+  .cmp .v.yes .mark { color: var(--rust); }
+  .cmp .v.part .mark { color: var(--muted); }
+  .cmp .v.no .mark { color: var(--muted); }
+  .cmp .v.yes.ours .mark { color: var(--crimson); }
+  .cmp-note { margin-top: 18px; color: var(--muted); font-size: 0.9rem; font-style: italic; max-width: 68ch; }
+  .cmp-note b { color: var(--text-2); font-style: normal; font-weight: 600; }
+  @media (max-width: 640px) {
+    .cmp .cell { padding: 12px 14px; font-size: 0.88rem; }
+    .cmp .head .cell { font-size: 0.68rem; }
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Footer                                                          */
+  /* ---------------------------------------------------------------- */
+  .site-foot { border-top: 1px solid var(--line-soft); padding-block: 48px 40px; }
+  .foot-grid { display: flex; flex-wrap: wrap; gap: 32px; justify-content: space-between; align-items: flex-start; }
+  .foot-brand { display: flex; align-items: center; gap: 12px; }
+  .foot-brand svg { width: 40px; height: 35px; }
+  .foot-brand .txt .name { font-family: var(--font-mono); font-weight: 600; font-size: 1rem; }
+  .foot-brand .txt .name b { color: var(--crimson); }
+  .foot-brand .txt small { display: block; color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+  .foot-cols { display: flex; flex-wrap: wrap; gap: 40px; }
+  .foot-col h4 { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  .foot-col a { display: block; color: var(--text-2); text-decoration: none; font-size: 0.9rem; padding: 4px 0; }
+  .foot-col a:hover { color: var(--crimson); }
+  .foot-legal { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+  .foot-legal .lic { font-family: var(--font-mono); color: var(--text-2); }
+  .foot-legal .disc { max-width: 62ch; }
+
+  .reveal { opacity: 0; transform: translateY(14px); }
+  .reveal.in { opacity: 1; transform: none; transition: opacity .6s ease, transform .6s cubic-bezier(.2,.7,.3,1); }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- ============================ HEADER ============================ -->
+<header class="site-head">
+  <div class="wrap bar">
+    <a class="brand" href="#top" aria-label="crimson-crab home">
+      <!-- crab mark (small) -->
+      <svg viewBox="0 0 120 104" role="img" aria-hidden="true">
+        <g class="crab-mark">
+          <!-- legs -->
+          <g stroke="var(--limb)" stroke-width="4" stroke-linecap="round" fill="none">
+            <path d="M40 66 Q22 70 14 84"/>
+            <path d="M42 74 Q26 82 22 96"/>
+            <path d="M80 66 Q98 70 106 84"/>
+            <path d="M78 74 Q94 82 98 96"/>
+          </g>
+          <!-- claws -->
+          <g class="claw-l">
+            <path d="M40 50 Q22 42 16 30" stroke="var(--claw)" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M16 30 q-9 -9 -1 -18 q10 -3 12 8 q-6 -2 -8 3 q4 3 9 1 q3 8 -4 12 q-6 2 -8 -6z" fill="var(--claw)" stroke="var(--claw-edge)" stroke-width="1.5"/>
+          </g>
+          <g class="claw-r">
+            <path d="M80 50 Q98 42 104 30" stroke="var(--claw)" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M104 30 q9 -9 1 -18 q-10 -3 -12 8 q6 -2 8 3 q-4 3 -9 1 q-3 8 4 12 q6 2 8 -6z" fill="var(--claw)" stroke="var(--claw-edge)" stroke-width="1.5"/>
+          </g>
+          <!-- eyestalks -->
+          <line x1="50" y1="40" x2="47" y2="24" stroke="var(--shell-edge)" stroke-width="3"/>
+          <line x1="70" y1="40" x2="73" y2="24" stroke="var(--shell-edge)" stroke-width="3"/>
+          <circle cx="47" cy="22" r="5" fill="var(--eye)"/>
+          <circle cx="73" cy="22" r="5" fill="var(--eye)"/>
+          <!-- carapace -->
+          <path d="M60 40 C34 40 26 54 28 66 C30 80 44 88 60 88 C76 88 90 80 92 66 C94 54 86 40 60 40 Z" fill="var(--shell)" stroke="var(--shell-edge)" stroke-width="2"/>
+          <path d="M40 58 Q60 50 80 58" stroke="var(--shell-edge)" stroke-width="2" fill="none" opacity="0.55"/>
+        </g>
+      </svg>
+      <span class="name"><b>crimson</b>-crab</span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <a href="#features" class="hide-sm">Features</a>
+      <a href="#examples" class="hide-sm">Examples</a>
+      <a href="#why" class="hide-sm">Why</a>
+      <a href="https://docs.rs/crimson-crab">docs.rs</a>
+      <a href="https://github.com/singhpratech/crimson-crab" class="gh">GitHub &#8599;</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<span id="top"></span>
+
+<!-- ============================= HERO ============================= -->
+<section class="hero">
+  <div class="wrap grid">
+    <div class="hero-copy reveal">
+      <p class="tag">
+        <span class="dot" aria-hidden="true"></span>
+        <span class="crate">crimson-crab</span>
+        <span class="sep" aria-hidden="true">/</span> v0.1
+        <span class="sep" aria-hidden="true">/</span> MIT&nbsp;OR&nbsp;Apache-2.0
+        <span class="sep" aria-hidden="true">/</span> MSRV&nbsp;1.75
+      </p>
+      <h1>The Rust SDK for <span class="accent">Claude</span> that can't panic on you.</h1>
+      <p class="lede">Built on one hard guarantee: <b>unwrap, expect, panic! and todo! are denied at compile time</b> across the whole library — so a malformed or surprising API response is always an <code>Error</code> you handle, never a panic in your service. And it's the complete Claude surface — streaming, tool use, thinking, prompt caching, batches — with <b>wire-faithful, forward-compatible types</b> that keep working the day Anthropic ships a new model.</p>
+
+      <div class="install" role="group" aria-label="Install command">
+        <div class="cmd">
+          <span class="prompt" aria-hidden="true">$</span>
+          <code id="install-cmd"><b>cargo</b> add crimson-crab</code>
+        </div>
+        <button class="copy" id="copy-btn" type="button" aria-label="Copy install command">Copy</button>
+      </div>
+
+      <div class="links">
+        <a class="btn primary" href="https://github.com/singhpratech/crimson-crab">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Crimson Crab
+        </a>
+        <a class="btn" href="https://crates.io/crates/crimson-crab">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M8 1.5 14 5v6l-6 3.5L2 11V5z"/><path d="M2 5l6 3.5L14 5M8 8.5V14.5"/></svg>
+          crates.io
+        </a>
+        <a class="btn" href="https://docs.rs/crimson-crab">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 2.5h7l3 3V13a.5.5 0 01-.5.5H3A.5.5 0 012.5 13V3a.5.5 0 01.5-.5z"/><path d="M9.5 2.5V6H13M5 8.5h6M5 11h6"/></svg>
+          docs.rs
+        </a>
+      </div>
+    </div>
+
+    <div class="art reveal" aria-hidden="true">
+      <!-- crab mark (large signature) -->
+      <svg viewBox="0 0 240 208" role="img">
+        <g>
+          <g stroke="var(--limb)" stroke-width="7" stroke-linecap="round" fill="none">
+            <path d="M80 134 Q44 142 28 172"/>
+            <path d="M84 150 Q52 166 44 194"/>
+            <path d="M86 162 Q66 182 66 202"/>
+            <path d="M160 134 Q196 142 212 172"/>
+            <path d="M156 150 Q188 166 196 194"/>
+            <path d="M154 162 Q174 182 174 202"/>
+          </g>
+          <g class="claw-l">
+            <path d="M80 102 Q42 84 30 58" stroke="var(--claw)" stroke-width="9" fill="none" stroke-linecap="round"/>
+            <path d="M30 58 q-18 -18 -2 -36 q20 -6 24 16 q-12 -4 -16 6 q8 6 18 2 q6 16 -8 24 q-12 4 -16 -12z" fill="var(--claw)" stroke="var(--claw-edge)" stroke-width="3"/>
+          </g>
+          <g class="claw-r">
+            <path d="M160 102 Q198 84 210 58" stroke="var(--claw)" stroke-width="9" fill="none" stroke-linecap="round"/>
+            <path d="M210 58 q18 -18 2 -36 q-20 -6 -24 16 q12 -4 16 6 q-8 6 -18 2 q-6 16 8 24 q12 4 16 -12z" fill="var(--claw)" stroke="var(--claw-edge)" stroke-width="3"/>
+          </g>
+          <line x1="100" y1="80" x2="94" y2="46" stroke="var(--shell-edge)" stroke-width="6"/>
+          <line x1="140" y1="80" x2="146" y2="46" stroke="var(--shell-edge)" stroke-width="6"/>
+          <circle cx="94" cy="42" r="10" fill="var(--eye)"/>
+          <circle cx="146" cy="42" r="10" fill="var(--eye)"/>
+          <circle cx="97" cy="39" r="3" fill="var(--shell)"/>
+          <circle cx="149" cy="39" r="3" fill="var(--shell)"/>
+          <path d="M120 78 C68 78 52 106 56 130 C60 158 88 174 120 174 C152 174 180 158 184 130 C188 106 172 78 120 78 Z" fill="var(--shell)" stroke="var(--shell-edge)" stroke-width="4"/>
+          <path d="M78 116 Q120 100 162 116" stroke="var(--shell-edge)" stroke-width="4" fill="none" opacity="0.5"/>
+          <path d="M84 134 Q120 122 156 134" stroke="var(--shell-edge)" stroke-width="3" fill="none" opacity="0.35"/>
+          <circle cx="104" cy="150" r="4" fill="var(--shell-edge)" opacity="0.5"/>
+          <circle cx="136" cy="150" r="4" fill="var(--shell-edge)" opacity="0.5"/>
+          <circle cx="120" cy="158" r="4" fill="var(--shell-edge)" opacity="0.5"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- =========================== FEATURES =========================== -->
+<section class="features" id="features">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="eyebrow">Spec fidelity, not surface area</p>
+      <h2>The complete Claude API. Nothing lost in translation.</h2>
+      <p>Streaming, tool use, adaptive thinking, prompt caching, batches — every Claude capability is a first-class Rust type that mirrors the wire exactly. And when Anthropic ships something new, you’re covered from day one: new models, new features, and new content types flow through without breaking a single build.</p>
+    </div>
+
+    <div class="fgrid reveal">
+      <div class="feat">
+        <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M4 12h13M4 17h7"/><path d="M17 5l4 4-4 4"/></svg></span>
+        <h3>Streaming SSE</h3>
+        <p>A hand-rolled SSE parser yields fine-grained <code>StreamEvent</code>s and accumulates a final <code>Message</code> for you — no eventsource dependency.</p>
+      </div>
+      <div class="feat">
+        <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l7 6-7 6M10 18l-7-6 7-6"/></svg></span>
+        <h3>Tool use</h3>
+        <p>Define tools with raw JSON schemas, drive the agentic loop yourself, and pass any server-tool through <code>ToolUnion::Raw</code>.</p>
+      </div>
+      <div class="feat">
+        <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a5 5 0 015 5c0 2-1 3-1 5H8c0-2-1-3-1-5a5 5 0 015-5z"/><path d="M9 18h6M10 21h4"/></svg></span>
+        <h3>Adaptive thinking</h3>
+        <p><code>ThinkingConfig</code> covers adaptive, budgeted and disabled modes, with effort and display controls surfaced directly.</p>
+      </div>
+      <div class="feat">
+        <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span>
+        <h3>Prompt caching</h3>
+        <p>Attach <code>CacheControl</code> to any block with an optional 5m/1h TTL, and read cache hits back off <code>Usage</code>.</p>
+      </div>
+      <div class="feat">
+        <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+        <h3>Message Batches</h3>
+        <p>Create, poll and cancel batches, then stream results back with a JSONL-decoding <code>Stream&lt;BatchResult&gt;</code>.</p>
+      </div>
+      <div class="feat">
+        <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 8h18M6 8v10M18 8v10"/><circle cx="12" cy="8" r="2.5"/></svg></span>
+        <h3>Token counting</h3>
+        <p>Turn any request into a count request and get exact <code>input_tokens</code> before you spend on generation.</p>
+      </div>
+      <div class="feat">
+        <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M12 8v4M12 15.5v.5"/></svg></span>
+        <h3>Typed errors &amp; retries</h3>
+        <p>Every non-2xx maps to a precise <code>Error</code> variant with <code>request_id</code>. Backoff with jitter honors <code>retry-after</code> automatically.</p>
+      </div>
+      <div class="feat">
+        <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 8v4l3 2"/><path d="M12 2a15 15 0 000 20M12 2a15 15 0 010 20"/></svg></span>
+        <h3>Forward compatible</h3>
+        <p>Unknown block types, stream events and stop reasons deserialize into <code>Unknown</code> catch-alls — new API surface never breaks a build.</p>
+      </div>
+      <div class="feat">
+        <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M2 12h20M12 2c3 3 3 17 0 20M12 2c-3 3-3 17 0 20"/></svg></span>
+        <h3>Runtime-light &amp; WASM-ready</h3>
+        <p>The public API exposes <code>futures_core::Stream</code>, not tokio types. <code>reqwest</code> underneath means it also checks on <code>wasm32-unknown-unknown</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- =========================== EXAMPLES =========================== -->
+<section id="examples">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="eyebrow">From zero to streaming in one screen</p>
+      <h2>Ergonomic, but nothing hidden.</h2>
+      <p>A builder for every request, helpers for the common paths, and full command of <code style="font-family:var(--font-mono);color:var(--rust)">stop_reason</code>. Here it is end to end.</p>
+    </div>
+
+    <div class="reveal">
+      <div class="tabs" role="tablist" aria-label="Code examples">
+        <button class="tab" role="tab" id="tab-basic" aria-controls="p-basic" aria-selected="true">Basic message</button>
+        <button class="tab" role="tab" id="tab-stream" aria-controls="p-stream" aria-selected="false" tabindex="-1">Streaming</button>
+        <button class="tab" role="tab" id="tab-tool" aria-controls="p-tool" aria-selected="false" tabindex="-1">Tool loop</button>
+      </div>
+
+      <div class="editor">
+        <div class="chrome">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="file">examples/<b id="file-name">basic.rs</b></span>
+        </div>
+
+        <div class="panel active" id="p-basic" role="tabpanel" aria-labelledby="tab-basic" tabindex="0">
+<pre><code><span class="k">use</span> crimson_crab::{<span class="t">Client</span>, <span class="t">MessagesRequest</span>, <span class="t">MessageParam</span>, models_ids};
+
+<span class="c">// Reads ANTHROPIC_API_KEY from the environment.</span>
+<span class="k">let</span> client = <span class="t">Client</span>::<span class="fn">from_env</span>()<span class="pu">?</span>;
+
+<span class="k">let</span> req = <span class="t">MessagesRequest</span>::<span class="fn">builder</span>()
+    .<span class="fn">model</span>(models_ids::<span class="t">CLAUDE_OPUS_4_8</span>)
+    .<span class="fn">max_tokens</span>(<span class="n">1024</span>)
+    .<span class="fn">system</span>(<span class="s">"You are terse."</span>)
+    .<span class="fn">messages</span>(<span class="m">vec!</span>[<span class="t">MessageParam</span>::<span class="fn">user</span>(<span class="s">"Hello, Claude"</span>)])
+    .<span class="fn">build</span>()<span class="pu">?</span>;                              <span class="c">// validates required fields</span>
+
+<span class="k">let</span> msg = client.<span class="fn">messages</span>().<span class="fn">create</span>(<span class="pu">&amp;</span>req).<span class="k">await</span><span class="pu">?</span>;
+
+<span class="k">if</span> msg.stop_reason == <span class="t">Some</span>(<span class="t">StopReason</span>::<span class="t">Refusal</span>) {
+    <span class="c">// handle a declined response</span>
+}
+<span class="m">println!</span>(<span class="s">"{}"</span>, msg.<span class="fn">text</span>());                    <span class="c">// concat of all text blocks</span></code></pre>
+        </div>
+
+        <div class="panel" id="p-stream" role="tabpanel" aria-labelledby="tab-stream" tabindex="0" hidden>
+<pre><code><span class="k">use</span> futures_util::<span class="t">StreamExt</span>;
+<span class="k">use</span> crimson_crab::{<span class="t">StreamEvent</span>, <span class="t">ContentDelta</span>};
+
+<span class="k">let</span> <span class="k">mut</span> stream = client.<span class="fn">messages</span>().<span class="fn">stream</span>(<span class="pu">&amp;</span>req).<span class="k">await</span><span class="pu">?</span>;
+
+<span class="k">while</span> <span class="k">let</span> <span class="t">Some</span>(event) = stream.<span class="fn">next</span>().<span class="k">await</span> {
+    <span class="k">if</span> <span class="k">let</span> <span class="t">StreamEvent</span>::<span class="t">ContentBlockDelta</span> { delta, .. } = event<span class="pu">?</span> {
+        <span class="k">if</span> <span class="k">let</span> <span class="t">ContentDelta</span>::<span class="t">TextDelta</span> { text } = delta {
+            <span class="m">print!</span>(<span class="s">"{text}"</span>);                   <span class="c">// tokens as they arrive</span>
+        }
+    }
+}
+
+<span class="k">let</span> final_msg = stream.<span class="fn">final_message</span>();          <span class="c">// fully accumulated Message</span>
+
+<span class="c">// ...or collapse the whole stream into a single line:</span>
+<span class="k">let</span> msg = client.<span class="fn">messages</span>().<span class="fn">stream</span>(<span class="pu">&amp;</span>req).<span class="k">await</span><span class="pu">?</span>.<span class="fn">collect_final</span>().<span class="k">await</span><span class="pu">?</span>;</code></pre>
+        </div>
+
+        <div class="panel" id="p-tool" role="tabpanel" aria-labelledby="tab-tool" tabindex="0" hidden>
+<pre><code><span class="k">use</span> crimson_crab::{<span class="t">Tool</span>, <span class="t">MessagesRequest</span>, <span class="t">StopReason</span>, models_ids};
+
+<span class="k">let</span> weather = <span class="t">Tool</span>::<span class="fn">new</span>(
+    <span class="s">"get_weather"</span>,
+    <span class="s">"Look up the current weather for a city"</span>,
+    <span class="m">serde_json::json!</span>({
+        <span class="s">"type"</span>: <span class="s">"object"</span>,
+        <span class="s">"properties"</span>: { <span class="s">"city"</span>: { <span class="s">"type"</span>: <span class="s">"string"</span> } },
+        <span class="s">"required"</span>: [<span class="s">"city"</span>],
+    }),
+);
+
+<span class="k">let</span> req = <span class="t">MessagesRequest</span>::<span class="fn">builder</span>()
+    .<span class="fn">model</span>(models_ids::<span class="t">CLAUDE_SONNET_5</span>)
+    .<span class="fn">max_tokens</span>(<span class="n">1024</span>)
+    .<span class="fn">tools</span>(<span class="m">vec!</span>[weather.<span class="fn">into</span>()])
+    .<span class="fn">messages</span>(messages.<span class="fn">clone</span>())
+    .<span class="fn">build</span>()<span class="pu">?</span>;
+
+<span class="k">let</span> msg = client.<span class="fn">messages</span>().<span class="fn">create</span>(<span class="pu">&amp;</span>req).<span class="k">await</span><span class="pu">?</span>;
+
+<span class="k">if</span> msg.stop_reason == <span class="t">Some</span>(<span class="t">StopReason</span>::<span class="t">ToolUse</span>) {
+    <span class="c">// dispatch each ToolUse block, append its ToolResult, and loop</span>
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============================= WHY ============================= -->
+<section class="why" id="why">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="eyebrow">Depth beats breadth</p>
+      <h2>Why a dedicated client?</h2>
+      <p>Multi-provider frameworks like <b>rig</b> and <b>genai</b> are genuinely great — if you need one interface across many model vendors, use them. <code style="font-family:var(--font-mono);color:var(--rust)">crimson-crab</code> makes the winning bet for Claude builders: go deep on one API and track it relentlessly — so every new Claude capability lands here first, typed and tested.</p>
+    </div>
+
+    <div class="cmp reveal" role="table" aria-label="crimson-crab versus multi-provider frameworks">
+      <div class="row head" role="row">
+        <span class="cell aspect" role="columnheader">Capability</span>
+        <span class="cell ours" role="columnheader">crimson-crab · dedicated</span>
+        <span class="cell" role="columnheader">rig / genai · multi-provider</span>
+      </div>
+      <div class="row" role="row">
+        <span class="cell aspect" role="cell">Thinking, caching &amp; batches</span>
+        <span class="cell" role="cell"><span class="v yes ours"><span class="mark">&#9679;</span> First-class types</span></span>
+        <span class="cell" role="cell"><span class="v part"><span class="mark">&#9683;</span> Often lags or partial</span></span>
+      </div>
+      <div class="row" role="row">
+        <span class="cell aspect" role="cell">Wire fidelity (no renamed concepts)</span>
+        <span class="cell" role="cell"><span class="v yes ours"><span class="mark">&#9679;</span> Types mirror the API</span></span>
+        <span class="cell" role="cell"><span class="v part"><span class="mark">&#9683;</span> Abstracted to a common shape</span></span>
+      </div>
+      <div class="row" role="row">
+        <span class="cell aspect" role="cell">New block / event types</span>
+        <span class="cell" role="cell"><span class="v yes ours"><span class="mark">&#9679;</span> Catch-all, never a hard error</span></span>
+        <span class="cell" role="cell"><span class="v part"><span class="mark">&#9683;</span> Varies by adapter</span></span>
+      </div>
+      <div class="row" role="row">
+        <span class="cell aspect" role="cell">Fine-grained streaming events</span>
+        <span class="cell" role="cell"><span class="v yes ours"><span class="mark">&#9679;</span> Every delta exposed</span></span>
+        <span class="cell" role="cell"><span class="v part"><span class="mark">&#9683;</span> Usually text-only</span></span>
+      </div>
+      <div class="row" role="row">
+        <span class="cell aspect" role="cell">One interface across many providers</span>
+        <span class="cell" role="cell"><span class="v no"><span class="mark">&#9675;</span> Claude only — by design</span></span>
+        <span class="cell" role="cell"><span class="v yes"><span class="mark">&#9679;</span> Their whole point</span></span>
+      </div>
+      <div class="row" role="row">
+        <span class="cell aspect" role="cell">Cadence tracking the Claude API</span>
+        <span class="cell" role="cell"><span class="v yes ours"><span class="mark">&#9679;</span> The core promise</span></span>
+        <span class="cell" role="cell"><span class="v part"><span class="mark">&#9683;</span> One vendor among many</span></span>
+      </div>
+    </div>
+    <p class="cmp-note reveal">Straight talk: if your app talks to several model vendors, a framework will serve you better. <b>crimson-crab is for teams who have chosen Claude</b> and want the whole surface, exactly as Anthropic ships it.</p>
+  </div>
+</section>
+
+</main>
+
+<!-- ============================= FOOTER ============================= -->
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <svg viewBox="0 0 120 104" role="img" aria-label="Crimson Crab">
+          <g>
+            <g stroke="var(--limb)" stroke-width="4" stroke-linecap="round" fill="none">
+              <path d="M40 66 Q22 70 14 84"/><path d="M42 74 Q26 82 22 96"/>
+              <path d="M80 66 Q98 70 106 84"/><path d="M78 74 Q94 82 98 96"/>
+            </g>
+            <path d="M40 50 Q22 42 16 30" stroke="var(--claw)" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M16 30 q-9 -9 -1 -18 q10 -3 12 8 q-6 -2 -8 3 q4 3 9 1 q3 8 -4 12 q-6 2 -8 -6z" fill="var(--claw)" stroke="var(--claw-edge)" stroke-width="1.5"/>
+            <path d="M80 50 Q98 42 104 30" stroke="var(--claw)" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M104 30 q9 -9 1 -18 q-10 -3 -12 8 q6 -2 8 3 q-4 3 -9 1 q-3 8 4 12 q6 2 8 -6z" fill="var(--claw)" stroke="var(--claw-edge)" stroke-width="1.5"/>
+            <line x1="50" y1="40" x2="47" y2="24" stroke="var(--shell-edge)" stroke-width="3"/>
+            <line x1="70" y1="40" x2="73" y2="24" stroke="var(--shell-edge)" stroke-width="3"/>
+            <circle cx="47" cy="22" r="5" fill="var(--eye)"/><circle cx="73" cy="22" r="5" fill="var(--eye)"/>
+            <path d="M60 40 C34 40 26 54 28 66 C30 80 44 88 60 88 C76 88 90 80 92 66 C94 54 86 40 60 40 Z" fill="var(--shell)" stroke="var(--shell-edge)" stroke-width="2"/>
+          </g>
+        </svg>
+        <div class="txt">
+          <div class="name"><b>crimson</b>-crab</div>
+          <small>A Rust SDK for Claude that won't panic on you — the full API surface, wire-faithful and forward-compatible.</small>
+        </div>
+      </div>
+
+      <div class="foot-cols">
+        <div class="foot-col">
+          <h4>Package</h4>
+          <a href="https://crates.io/crates/crimson-crab">crates.io</a>
+          <a href="https://docs.rs/crimson-crab">docs.rs</a>
+          <a href="https://github.com/singhpratech/crimson-crab">GitHub</a>
+        </div>
+        <div class="foot-col">
+          <h4>Explore</h4>
+          <a href="#features">Features</a>
+          <a href="#examples">Examples</a>
+          <a href="#why">Why crimson-crab</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot-legal">
+      <span class="lic">MIT OR Apache-2.0</span>
+      <span class="disc">crimson-crab is an independent open-source project and is not affiliated with Anthropic.</span>
+      <span>&copy; 2026 Crimson Crab &#129408;</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    "use strict";
+
+    /* --- copy install command --- */
+    var copyBtn = document.getElementById("copy-btn");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function () {
+        var text = "cargo add crimson-crab";
+        var done = function () {
+          copyBtn.textContent = "Copied";
+          copyBtn.classList.add("done");
+          setTimeout(function () {
+            copyBtn.textContent = "Copy";
+            copyBtn.classList.remove("done");
+          }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, done);
+        } else {
+          var ta = document.createElement("textarea");
+          ta.value = text; document.body.appendChild(ta); ta.select();
+          try { document.execCommand("copy"); } catch (e) {}
+          document.body.removeChild(ta); done();
+        }
+      });
+    }
+
+    /* --- tabbed code examples --- */
+    var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+    var fileName = document.getElementById("file-name");
+    var files = { "tab-basic": "basic.rs", "tab-stream": "streaming.rs", "tab-tool": "tool_use.rs" };
+
+    function select(tab) {
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        t.tabIndex = on ? 0 : -1;
+        var panel = document.getElementById(t.getAttribute("aria-controls"));
+        if (panel) {
+          panel.classList.toggle("active", on);
+          if (on) { panel.removeAttribute("hidden"); } else { panel.setAttribute("hidden", ""); }
+        }
+      });
+      if (fileName && files[tab.id]) { fileName.textContent = files[tab.id]; }
+    }
+
+    tabs.forEach(function (tab, i) {
+      tab.addEventListener("click", function () { select(tab); });
+      tab.addEventListener("keydown", function (e) {
+        var idx = null;
+        if (e.key === "ArrowRight") { idx = (i + 1) % tabs.length; }
+        else if (e.key === "ArrowLeft") { idx = (i - 1 + tabs.length) % tabs.length; }
+        else if (e.key === "Home") { idx = 0; }
+        else if (e.key === "End") { idx = tabs.length - 1; }
+        if (idx !== null) { e.preventDefault(); tabs[idx].focus(); select(tabs[idx]); }
+      });
+    });
+
+    /* --- scroll reveal --- */
+    var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var reveals = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
+    if (reduced || !("IntersectionObserver" in window)) {
+      reveals.forEach(function (el) { el.classList.add("in"); });
+    } else {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+        });
+      }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+      reveals.forEach(function (el) { io.observe(el); });
+    }
+  })();
+</script>
+</body>
+</html>
