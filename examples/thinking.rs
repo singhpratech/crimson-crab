@@ -7,7 +7,7 @@
 //! ANTHROPIC_API_KEY=sk-ant-... cargo run --example thinking
 //! ```
 
-use crimson_crab::model_ids::CLAUDE_OPUS_4_8;
+use crimson_crab::model_ids::CLAUDE_OPUS_5;
 use crimson_crab::prelude::*;
 use crimson_crab::types::ContentBlock;
 
@@ -16,7 +16,7 @@ async fn main() -> anyhow::Result<()> {
     let client = Client::from_env()?;
 
     let request = MessagesRequest::builder()
-        .model(CLAUDE_OPUS_4_8)
+        .model(CLAUDE_OPUS_5)
         .max_tokens(4096)
         // Let the model choose its own reasoning budget and surface a summary.
         .thinking(ThinkingConfig::adaptive_with_display(

@@ -203,6 +203,6 @@ ModelInfo: `{"id": "claude-opus-4-8", "display_name": "Claude Opus 4.8", "create
 
 ## Current model IDs (for `models_ids.rs` constants + docs)
 
-`claude-fable-5`, `claude-mythos-5` (Mythos-class, restricted availability), `claude-opus-4-8`, `claude-opus-4-7`, `claude-opus-4-6`, `claude-sonnet-5`, `claude-sonnet-4-6`, `claude-haiku-4-5` (full: `claude-haiku-4-5-20251001`), legacy: `claude-opus-4-5`, `claude-sonnet-4-5`.
+`claude-fable-5`, `claude-mythos-5` (Mythos-class, restricted availability), `claude-opus-5`, `claude-opus-4-8`, `claude-opus-4-7`, `claude-opus-4-6`, `claude-sonnet-5`, `claude-sonnet-4-6`, `claude-haiku-4-5` (full: `claude-haiku-4-5-20251001`), legacy: `claude-opus-4-5`, `claude-sonnet-4-5`.
 
 **Future-model contract:** the `model` field is an OPEN STRING everywhere in the SDK — never an enum. Constants are conveniences only; any model ID Anthropic ships tomorrow must work with zero SDK changes. Runtime capability discovery goes through GET /v1/models (`max_input_tokens`, `max_tokens`, `capabilities` tree kept as raw JSON precisely so new capability keys appear without an SDK release).

@@ -9,7 +9,7 @@
 
 use std::io::Write;
 
-use crimson_crab::model_ids::CLAUDE_OPUS_4_8;
+use crimson_crab::model_ids::CLAUDE_OPUS_5;
 use crimson_crab::prelude::*;
 use crimson_crab::streaming::{ContentDelta, StreamEvent};
 use futures_util::StreamExt;
@@ -19,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
     let client = Client::from_env()?;
 
     let request = MessagesRequest::builder()
-        .model(CLAUDE_OPUS_4_8)
+        .model(CLAUDE_OPUS_5)
         .max_tokens(1024)
         .messages(vec![MessageParam::user("Write a haiku about async Rust.")])
         .build()?;

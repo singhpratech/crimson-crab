@@ -41,7 +41,7 @@ crimson-crab/
 │   │   ├── messages.rs   # create(), stream(), count_tokens()
 │   │   ├── models.rs     # list(), get() (+ ModelInfo w/ capabilities as serde_json::Value)
 │   │   └── batches.rs    # create/get/list/cancel/results (JSONL streaming decode)
-│   └── models_ids.rs     # const model ID strings (CLAUDE_OPUS_4_8, CLAUDE_SONNET_5, ...)
+│   └── models_ids.rs     # const model ID strings (CLAUDE_OPUS_5, CLAUDE_SONNET_5, ...)
 ├── examples/
 │   ├── basic.rs          # simple message
 │   ├── streaming.rs      # stream text deltas + final message
@@ -73,7 +73,7 @@ let client = Client::builder()
 
 // Messages
 let req = MessagesRequest::builder()
-    .model(models_ids::CLAUDE_OPUS_4_8)
+    .model(models_ids::CLAUDE_OPUS_5)
     .max_tokens(1024)
     .system("You are terse.")                        // Into<SystemPrompt>
     .messages(vec![MessageParam::user("Hello")])

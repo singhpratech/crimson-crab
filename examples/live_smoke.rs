@@ -13,7 +13,7 @@
 
 use std::io::Write;
 
-use crimson_crab::model_ids::CLAUDE_OPUS_4_8;
+use crimson_crab::model_ids::CLAUDE_OPUS_5;
 use crimson_crab::prelude::*;
 use futures_util::StreamExt;
 
@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
     let client = Client::from_env()?;
 
     let request = MessagesRequest::builder()
-        .model(CLAUDE_OPUS_4_8)
+        .model(CLAUDE_OPUS_5)
         .max_tokens(128)
         .system("You are a concise assistant. Answer in one short sentence.")
         .messages(vec![MessageParam::user(

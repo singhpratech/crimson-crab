@@ -7,12 +7,18 @@
 //! # Examples
 //!
 //! ```
-//! use crimson_crab::model_ids::CLAUDE_OPUS_4_8;
-//! assert_eq!(CLAUDE_OPUS_4_8, "claude-opus-4-8");
+//! use crimson_crab::model_ids::CLAUDE_OPUS_5;
+//! assert_eq!(CLAUDE_OPUS_5, "claude-opus-5");
 //! ```
 
 /// Claude Fable 5 (`claude-fable-5`).
 pub const CLAUDE_FABLE_5: &str = "claude-fable-5";
+
+/// Claude Mythos 5 (`claude-mythos-5`). Restricted availability.
+pub const CLAUDE_MYTHOS_5: &str = "claude-mythos-5";
+
+/// Claude Opus 5 (`claude-opus-5`).
+pub const CLAUDE_OPUS_5: &str = "claude-opus-5";
 
 /// Claude Opus 4.8 (`claude-opus-4-8`).
 pub const CLAUDE_OPUS_4_8: &str = "claude-opus-4-8";

@@ -20,7 +20,7 @@
 //! ## Quickstart
 //!
 //! ```no_run
-//! use crimson_crab::model_ids::CLAUDE_OPUS_4_8;
+//! use crimson_crab::model_ids::CLAUDE_OPUS_5;
 //! use crimson_crab::prelude::*;
 //!
 //! # #[tokio::main]
@@ -29,7 +29,7 @@
 //! let client = Client::from_env()?;
 //!
 //! let request = MessagesRequest::builder()
-//!     .model(CLAUDE_OPUS_4_8)
+//!     .model(CLAUDE_OPUS_5)
 //!     .max_tokens(1024)
 //!     .messages(vec![MessageParam::user("Hello, Claude!")])
 //!     .build()?;
@@ -43,7 +43,7 @@
 //! ## Building request values
 //!
 //! ```
-//! use crimson_crab::model_ids::CLAUDE_OPUS_4_8;
+//! use crimson_crab::model_ids::CLAUDE_OPUS_5;
 //! use crimson_crab::prelude::*;
 //!
 //! // A conversation turn.
@@ -60,7 +60,7 @@
 //!     }),
 //! );
 //!
-//! assert_eq!(CLAUDE_OPUS_4_8, "claude-opus-4-8");
+//! assert_eq!(CLAUDE_OPUS_5, "claude-opus-5");
 //! assert_eq!(messages[0].role, Role::User);
 //! assert_eq!(tool.name, "get_weather");
 //! ```

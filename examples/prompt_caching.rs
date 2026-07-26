@@ -8,7 +8,7 @@
 //! ANTHROPIC_API_KEY=sk-ant-... cargo run --example prompt_caching
 //! ```
 
-use crimson_crab::model_ids::CLAUDE_OPUS_4_8;
+use crimson_crab::model_ids::CLAUDE_OPUS_5;
 use crimson_crab::prelude::*;
 use crimson_crab::types::TextBlockParam;
 
@@ -27,7 +27,7 @@ async fn main() -> anyhow::Result<()> {
 
     let ask = |question: &str| {
         MessagesRequest::builder()
-            .model(CLAUDE_OPUS_4_8)
+            .model(CLAUDE_OPUS_5)
             .max_tokens(256)
             .system(system.clone())
             .messages(vec![MessageParam::user(question.to_string())])

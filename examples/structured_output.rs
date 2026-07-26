@@ -7,7 +7,7 @@
 //! ANTHROPIC_API_KEY=sk-ant-... cargo run --example structured_output
 //! ```
 
-use crimson_crab::model_ids::CLAUDE_OPUS_4_8;
+use crimson_crab::model_ids::CLAUDE_OPUS_5;
 use crimson_crab::prelude::*;
 use serde::Deserialize;
 
@@ -35,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
     });
 
     let request = MessagesRequest::builder()
-        .model(CLAUDE_OPUS_4_8)
+        .model(CLAUDE_OPUS_5)
         .max_tokens(512)
         .output_config(OutputConfig {
             effort: None,

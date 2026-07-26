@@ -35,16 +35,16 @@ fn merge_extra(value: &mut serde_json::Value, extra: &serde_json::Map<String, se
 ///
 /// ```
 /// use crimson_crab::api::MessagesRequest;
-/// use crimson_crab::model_ids::CLAUDE_OPUS_4_8;
+/// use crimson_crab::model_ids::CLAUDE_OPUS_5;
 /// use crimson_crab::types::MessageParam;
 ///
 /// let request = MessagesRequest::builder()
-///     .model(CLAUDE_OPUS_4_8)
+///     .model(CLAUDE_OPUS_5)
 ///     .max_tokens(1024)
 ///     .messages(vec![MessageParam::user("Hello")])
 ///     .build()
 ///     .unwrap();
-/// assert_eq!(request.model, "claude-opus-4-8");
+/// assert_eq!(request.model, "claude-opus-5");
 /// assert_eq!(request.max_tokens, 1024);
 /// ```
 ///
@@ -486,12 +486,12 @@ pub struct CountTokensResponse {
 ///
 /// ```no_run
 /// use crimson_crab::api::MessagesRequest;
-/// use crimson_crab::model_ids::CLAUDE_OPUS_4_8;
+/// use crimson_crab::model_ids::CLAUDE_OPUS_5;
 /// use crimson_crab::types::MessageParam;
 ///
 /// # async fn demo(client: &crimson_crab::Client) -> crimson_crab::Result<()> {
 /// let request = MessagesRequest::builder()
-///     .model(CLAUDE_OPUS_4_8)
+///     .model(CLAUDE_OPUS_5)
 ///     .max_tokens(1024)
 ///     .messages(vec![MessageParam::user("Hello")])
 ///     .build()?;

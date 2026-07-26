@@ -6,7 +6,7 @@
 //! ANTHROPIC_API_KEY=sk-ant-... cargo run --example basic
 //! ```
 
-use crimson_crab::model_ids::CLAUDE_OPUS_4_8;
+use crimson_crab::model_ids::CLAUDE_OPUS_5;
 use crimson_crab::prelude::*;
 
 #[tokio::main]
@@ -15,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
     let client = Client::from_env()?;
 
     let request = MessagesRequest::builder()
-        .model(CLAUDE_OPUS_4_8)
+        .model(CLAUDE_OPUS_5)
         .max_tokens(1024)
         .system("You are a concise assistant.")
         .messages(vec![MessageParam::user(

@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-07-26
+
+### Added
+
+- **`CLAUDE_OPUS_5`** (`claude-opus-5`) and **`CLAUDE_MYTHOS_5`** (`claude-mythos-5`)
+  in `model_ids`. Opus 5 is the current Opus generation; Mythos 5 was already
+  named in `docs/wire-api.md` but had no constant.
+
+### Changed
+
+- **Docs and examples** now open with `CLAUDE_OPUS_5` rather than the
+  previous-generation `CLAUDE_OPUS_4_8`.
+
+Both models already worked before this release — `model` is an open string
+everywhere in the SDK and always has been, so `.model("claude-opus-5")` was
+valid on 0.1.0. These constants are conveniences catching up to the model
+lineup, not new capability.
+
 ## [0.1.1] - 2026-07-16
 
 ### Fixed

@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let requests: Vec<BatchRequestItem> = (0..3)
         .map(|i| {
             let request = MessagesRequest::builder()
-                .model(crimson_crab::model_ids::CLAUDE_OPUS_4_8)
+                .model(crimson_crab::model_ids::CLAUDE_OPUS_5)
                 .max_tokens(64)
                 .messages(vec![MessageParam::user(format!(
                     "Classify sentiment (one word): review #{i}"
