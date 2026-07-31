@@ -438,7 +438,7 @@
       <p class="tag">
         <span class="dot" aria-hidden="true"></span>
         <span class="crate">crimson-crab</span>
-        <span class="sep" aria-hidden="true">/</span> v0.1
+        <span class="sep" aria-hidden="true">/</span> <span id="crate-version">v0.2.1</span>
         <span class="sep" aria-hidden="true">/</span> MIT&nbsp;OR&nbsp;Apache-2.0
         <span class="sep" aria-hidden="true">/</span> MSRV&nbsp;1.75
       </p>
@@ -875,6 +875,17 @@
       }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
       reveals.forEach(function (el) { io.observe(el); });
     }
+
+    /* --- live crate version (crates.io allows CORS; hardcoded text is the fallback) --- */
+    fetch("https://crates.io/api/v1/crates/crimson-crab")
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var el = document.getElementById("crate-version");
+        if (el && d.crate && d.crate.max_stable_version) {
+          el.textContent = "v" + d.crate.max_stable_version;
+        }
+      })
+      .catch(function () { /* keep the hardcoded version */ });
   })();
 </script>
 </body>
