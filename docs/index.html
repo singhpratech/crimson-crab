@@ -584,6 +584,7 @@
         <button class="tab" role="tab" id="tab-basic" aria-controls="p-basic" aria-selected="true">Basic message</button>
         <button class="tab" role="tab" id="tab-stream" aria-controls="p-stream" aria-selected="false" tabindex="-1">Streaming</button>
         <button class="tab" role="tab" id="tab-tool" aria-controls="p-tool" aria-selected="false" tabindex="-1">Tool loop</button>
+        <button class="tab" role="tab" id="tab-typed" aria-controls="p-typed" aria-selected="false" tabindex="-1">Typed output</button>
       </div>
 
       <div class="editor">
@@ -659,6 +660,33 @@
     <span class="c">// dispatch each ToolUse block, append its ToolResult, and loop</span>
 }</code></pre>
         </div>
+
+        <div class="panel" id="p-typed" role="tabpanel" aria-labelledby="tab-typed" tabindex="0" hidden>
+<pre><code><span class="c">// cargo add crimson-crab --features schemars   (new in 0.2)</span>
+
+<span class="c">/// A contact extracted from free-form text.</span>
+<span class="pu">#[</span><span class="k">derive</span><span class="pu">(</span>serde::<span class="t">Deserialize</span>, schemars::<span class="t">JsonSchema</span><span class="pu">)]</span>
+<span class="k">struct</span> <span class="t">Contact</span> {
+    <span class="c">/// The contact's full name.</span>
+    name: <span class="t">String</span>,
+    <span class="c">/// The employer, or `null` if none was mentioned.</span>
+    company: <span class="t">Option</span>&lt;<span class="t">String</span>&gt;,
+}
+
+<span class="c">// The schema comes from the struct — inlined, additionalProperties: false,</span>
+<span class="c">// everything required (Option fields become nullable). No JSON by hand.</span>
+<span class="k">let</span> parsed = client.<span class="fn">messages</span>().<span class="fn">parse</span>::&lt;<span class="t">Contact</span>&gt;(<span class="pu">&amp;</span>req).<span class="k">await</span><span class="pu">?</span>;
+
+<span class="m">println!</span>(<span class="s">"{} ({:?})"</span>, parsed.data.name, parsed.data.company);
+<span class="m">println!</span>(<span class="s">"{} output tokens"</span>, parsed.message.usage.output_tokens);
+
+<span class="c">// Tools work the same way — the input schema is derived, doc</span>
+<span class="c">// comments and all, from the argument type:</span>
+<span class="k">let</span> weather = <span class="t">Tool</span>::<span class="fn">from_type</span>::&lt;<span class="t">GetWeather</span>&gt;(
+    <span class="s">"get_weather"</span>,
+    <span class="s">"Look up the current weather for a city"</span>,
+);</code></pre>
+        </div>
       </div>
     </div>
   </div>
@@ -685,6 +713,11 @@
         <span class="cell aspect" role="cell">Thinking, caching &amp; batches</span>
         <span class="cell" role="cell"><span class="v yes ours"><span class="mark">&#9679;</span> First-class types</span></span>
         <span class="cell" role="cell"><span class="v part"><span class="mark">&#9683;</span> Often lags or partial</span></span>
+      </div>
+      <div class="row" role="row">
+        <span class="cell aspect" role="cell">Typed output &amp; tools from Rust structs</span>
+        <span class="cell" role="cell"><span class="v yes ours"><span class="mark">&#9679;</span> parse::&lt;T&gt;() + derived schemas</span></span>
+        <span class="cell" role="cell"><span class="v part"><span class="mark">&#9683;</span> Varies</span></span>
       </div>
       <div class="row" role="row">
         <span class="cell aspect" role="cell">Wire fidelity (no renamed concepts)</span>
@@ -801,7 +834,7 @@
     /* --- tabbed code examples --- */
     var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
     var fileName = document.getElementById("file-name");
-    var files = { "tab-basic": "basic.rs", "tab-stream": "streaming.rs", "tab-tool": "tool_use.rs" };
+    var files = { "tab-basic": "basic.rs", "tab-stream": "streaming.rs", "tab-tool": "tool_use.rs", "tab-typed": "typed_parse.rs" };
 
     function select(tab) {
       tabs.forEach(function (t) {
