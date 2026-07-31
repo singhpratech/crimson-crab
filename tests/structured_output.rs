@@ -299,3 +299,77 @@ fn tool_from_type_derives_the_input_schema() {
     assert!(schema.get("$schema").is_none());
     assert!(!schema.to_string().contains("$ref"));
 }
+
+/// A recursive type has no finite inlined schema; `parse` must reject it with a
+/// clear configuration error before any request is sent.
+#[tokio::test]
+async fn parse_rejects_recursive_types_before_sending() {
+    /// A tree node that contains more tree nodes.
+    #[derive(Debug, Deserialize, JsonSchema)]
+    #[allow(dead_code)]
+    struct Node {
+        label: String,
+        children: Vec<Node>,
+    }
+
+    let server = MockServer::start().await;
+    let client = client_for(&server);
+
+    let err = client
+        .messages()
+        .parse::<Node>(&request())
+        .await
+        .expect_err("recursive schema must be rejected");
+    match err {
+        Error::Config(message) => {
+            assert!(
+                message.contains("$ref"),
+                "message names the cause: {message}"
+            );
+            assert!(
+                message.contains("Node"),
+                "message names the type: {message}"
+            );
+        }
+        other => panic!("expected Error::Config, got {other:?}"),
+    }
+
+    // Nothing was sent: the schema was rejected client-side.
+    assert!(server
+        .received_requests()
+        .await
+        .expect("recorded")
+        .is_empty());
+}
+
+/// A response whose content has no text block (e.g. tool_use only) is reported
+/// as exactly that, not as a schema mismatch with an opaque EOF error.
+#[tokio::test]
+async fn parse_reports_missing_text_block_plainly() {
+    let server = MockServer::start().await;
+    let mut body = message_with("", "end_turn");
+    body["content"] = json!([{
+        "type": "tool_use",
+        "id": "toolu_1",
+        "name": "get_weather",
+        "input": {"city": "Paris"}
+    }]);
+    mount_message(&server, body).await;
+    let client = client_for(&server);
+
+    let err = client
+        .messages()
+        .parse::<Contact>(&request())
+        .await
+        .expect_err("no text to parse");
+    match err {
+        Error::StructuredOutput { message, source } => {
+            assert!(
+                message.contains("no text block"),
+                "message states the real cause: {message}"
+            );
+            assert!(source.is_none(), "no serde error when there is no text");
+        }
+        other => panic!("expected Error::StructuredOutput, got {other:?}"),
+    }
+}

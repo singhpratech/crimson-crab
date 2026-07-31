@@ -630,6 +630,10 @@ impl<'a> Messages<'a> {
     /// ([`StopReason::MaxTokens`], which leaves the JSON unclosed), or when the
     /// response text does not deserialize into `T`.
     ///
+    /// **Recursive types are rejected** with [`Error::Config`] before anything
+    /// is sent: they have no finite inlined schema (`schemars` falls back to
+    /// `$defs`/`$ref`), and structured output requires a self-contained one.
+    ///
     /// Note that the API accepts a subset of JSON Schema. `schemars` emits
     /// keywords outside that subset for some Rust types — notably the
     /// `minimum: 0` bound on unsigned integers — which the API may reject with
@@ -670,6 +674,17 @@ impl<'a> Messages<'a> {
         let mut schema = crate::schema::generate::<T>();
         crate::schema::strictify(&mut schema);
 
+        // A recursive type cannot be inlined: `schemars` falls back to
+        // `$defs`/`$ref`, which structured output rejects. Catch it here with a
+        // clear error instead of letting the API return an opaque 400.
+        if crate::schema::contains_ref(&schema) {
+            return Err(Error::Config(format!(
+                "the JSON Schema derived for `{}` contains `$ref`/`$defs` (is the type \
+                 recursive?); structured output requires a self-contained schema",
+                std::any::type_name::<T>()
+            )));
+        }
+
         let mut request = request.clone();
         let output_config = request
             .output_config
@@ -693,7 +708,15 @@ impl<'a> Messages<'a> {
             });
         }
 
-        match serde_json::from_str(&message.text()) {
+        let text = message.text();
+        if text.is_empty() {
+            return Err(Error::StructuredOutput {
+                message: describe(&message, "the response contained no text block to parse"),
+                source: None,
+            });
+        }
+
+        match serde_json::from_str(&text) {
             Ok(data) => Ok(ParsedMessage { data, message }),
             Err(source) => Err(Error::StructuredOutput {
                 message: describe(&message, "the response text did not match the schema"),

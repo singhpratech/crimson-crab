@@ -10,7 +10,7 @@ The full Claude API in idiomatic Rust — streaming, tool use, extended thinking
 [![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![MSRV](https://img.shields.io/badge/MSRV-1.75-blue.svg)](#minimum-supported-rust-version)
 
-**191 tests · zero clippy warnings · a panic-free library (`unwrap`/`expect`/`panic` denied at compile time) · MSRV 1.75 · MIT OR Apache-2.0**
+**207 tests · zero clippy warnings · a panic-free library (`unwrap`/`expect`/`panic` denied at compile time) · MSRV 1.75 · MIT OR Apache-2.0**
 
 - **Docs:** [docs.rs/crimson-crab](https://docs.rs/crimson-crab)
 - **Site:** [singhpratech.github.io/crimson-crab](https://singhpratech.github.io/crimson-crab/)
@@ -65,7 +65,7 @@ async fn main() -> crimson_crab::Result<()> {
 - **A tokio-free public API — runs anywhere.** The public surface exposes `futures_core::Stream`, not runtime-specific types; `tokio` is a dev-dependency only. The same builder code compiles for native **and** `wasm32-unknown-unknown` on default features.
 - **Official-SDK-parity retries — production-grade out of the box.** Connection errors, timeouts, `408`/`409`/`429`, and `5xx` are retried with full-jitter exponential backoff (0.5s base, 8s cap) and honor `retry-after` — capped at 60s so a hostile or broken server can't park your retry loop for hours. Streaming requests retry only before the first byte.
 - **Streaming that never truncates mid-generation.** The client uses an *idle* read timeout rather than a total-request deadline, so a long-but-actively-flowing SSE response is never cut off just because total elapsed time crossed a limit.
-- **Tested against real API fixtures.** Every content block and stream event from the wire reference has a serde round-trip test, and every endpoint has `wiremock` coverage — 191 tests, zero clippy warnings.
+- **Tested against real API fixtures.** Every content block and stream event from the wire reference has a serde round-trip test, and every endpoint has `wiremock` coverage — 207 tests, zero clippy warnings.
 
 ## Feature coverage
 
@@ -204,10 +204,12 @@ loop {
 
 ## Typed schemas — `schemars` feature
 
-Enable the optional `schemars` feature and the JSON Schema comes from your Rust type, so the schema and the type that parses against it cannot drift apart:
+Enable the optional `schemars` feature and the JSON Schema comes from your Rust type, so the schema and the type that parses against it cannot drift apart. Your crate needs its own `schemars` dependency for the derive — use major version **1**, the same one crimson-crab links (mixing `schemars 0.8` in produces a confusing "trait `JsonSchema` is not implemented" error, because the two majors define different traits):
 
 ```sh
 cargo add crimson-crab --features schemars
+cargo add schemars@1
+cargo add serde --features derive
 ```
 
 `messages().parse::<T>()` derives `T`'s schema, tightens it into the shape structured output requires (subschemas inlined, `additionalProperties: false`, every property `required`), sets it on a copy of your request, and deserializes the response — while handing back the whole `Message` so `usage` and `stop_reason` stay in reach. `Option<T>` fields become *nullable* properties rather than absent ones, so "everything is required" costs you nothing. Doc comments ride along as schema `description`s the model reads.
@@ -331,7 +333,7 @@ let items = vec![BatchRequestItem::from_request("row-1", request)?];
 let batch = client.batches().create(&items).await?;
 
 // Poll until the batch reaches a terminal state. (A built-in `poll_until_ended`
-// helper is on the v0.2 roadmap; until then, loop with your runtime's timer and
+// helper is on the roadmap; until then, loop with your runtime's timer and
 // your own deadline guard.)
 let batch = loop {
     let current = client.batches().get(&batch.id).await?;

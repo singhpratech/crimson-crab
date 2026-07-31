@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-07-31
+
+### Fixed
+
+- **`parse::<T>()` rejects recursive types up front.** A recursive `T` has no
+  finite inlined schema — `schemars` falls back to `$defs`/`$ref`, which
+  structured output does not accept — so `parse` previously sent a request the
+  API would refuse with an opaque `400`. It now returns `Error::Config` naming
+  the type and the cause before anything is sent. (`Tool::from_type` is
+  unaffected: tool schemas are ordinary JSON Schema, where references are
+  valid.)
+- **A response with no text block** (for example `tool_use`-only content) is now
+  reported by `parse` as exactly that, instead of as a schema mismatch wrapping
+  an opaque serde EOF error.
+- **README setup for the `schemars` feature** now lists the `schemars@1` and
+  `serde` dependencies your own crate needs for the derives, and warns about
+  the confusing error produced by mixing in `schemars 0.8`.
+
 ## [0.2.0] - 2026-07-31
 
 ### Added

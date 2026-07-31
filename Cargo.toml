@@ -1,11 +1,11 @@
 [package]
 name = "crimson-crab"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 rust-version = "1.75"
 authors = ["singhpratech"]
 license = "MIT OR Apache-2.0"
-description = "A Rust SDK for Anthropic's Claude API that can't panic on you: unwrap/expect/panic denied at compile time. Messages, streaming, tools, thinking, prompt caching, batches."
+description = "A Rust SDK for Anthropic's Claude API that can't panic on you: unwrap/expect/panic denied at compile time. Typed output and tools from Rust structs, streaming, thinking, caching, batches."
 keywords = ["claude", "anthropic", "ai", "llm", "sdk"]
 categories = ["api-bindings", "asynchronous", "web-programming::http-client"]
 repository = "https://github.com/singhpratech/crimson-crab"

@@ -6,23 +6,27 @@
 //! `schemars` emits it. [`generate`] is therefore the common half, and
 //! [`strictify`] the extra pass `parse` applies on top.
 //!
-//! Subschemas are always inlined: the structured-output schema subset is
-//! defined in terms of a single self-contained schema object, and inlining also
-//! means neither caller has to resolve `$ref`s against `$defs` afterwards.
+//! Subschemas are inlined: the structured-output schema subset is defined in
+//! terms of a single self-contained schema object, and inlining also means
+//! neither caller has to resolve `$ref`s against `$defs` afterwards. The
+//! exception is a **recursive** type, which has no finite inlined form —
+//! `schemars` falls back to `$defs`/`$ref` there, detectable via
+//! [`contains_ref`].
 
 use schemars::generate::SchemaSettings;
 use schemars::JsonSchema;
 
-/// Generates `T`'s JSON Schema with every subschema inlined.
+/// Generates `T`'s JSON Schema with subschemas inlined.
 ///
 /// The `$schema` meta-keyword `schemars` puts on the root is removed: it
 /// declares a dialect rather than constraining the value, and the API's schema
 /// field does not expect it. `title` and `description` (the latter derived from
 /// doc comments) are kept — they are annotations the model reads.
 ///
-/// Because subschemas are inlined, a **recursive** type has no finite schema
-/// and `schemars` will recurse until the stack is exhausted. That matches the
-/// API, which does not accept recursive schemas either.
+/// A **recursive** type has no finite inlined form; for those, `schemars`
+/// falls back to emitting `$defs`/`$ref` rather than recursing forever. Use
+/// [`contains_ref`] to detect that case where a self-contained schema is
+/// required (structured output does not accept references).
 pub(crate) fn generate<T: JsonSchema>() -> serde_json::Value {
     let settings = SchemaSettings::default().with(|settings| settings.inline_subschemas = true);
     let mut schema = settings
@@ -33,6 +37,31 @@ pub(crate) fn generate<T: JsonSchema>() -> serde_json::Value {
         object.remove("$schema");
     }
     schema
+}
+
+/// Reports whether the schema still carries a `$ref` or `$defs` keyword — the
+/// fallback `schemars` uses for a **recursive** type, which cannot be inlined.
+///
+/// Property *names* do not count: the keys of a `properties` map are data, not
+/// schema keywords, so a field literally named `$ref` is not a reference.
+pub(crate) fn contains_ref(schema: &serde_json::Value) -> bool {
+    match schema {
+        serde_json::Value::Object(object) => {
+            if object.contains_key("$ref") || object.contains_key("$defs") {
+                return true;
+            }
+            object
+                .iter()
+                .any(|(key, value)| match (key.as_str(), value) {
+                    ("properties", serde_json::Value::Object(properties)) => {
+                        properties.values().any(contains_ref)
+                    }
+                    _ => contains_ref(value),
+                })
+        }
+        serde_json::Value::Array(items) => items.iter().any(contains_ref),
+        _ => false,
+    }
 }
 
 /// Rewrites a schema in place into the strict shape `output_config.format`
@@ -200,6 +229,36 @@ mod tests {
         assert_eq!(
             schema["properties"]["tags"]["items"]["type"],
             serde_json::json!("string")
+        );
+    }
+
+    #[test]
+    fn contains_ref_detects_recursive_types() {
+        /// A tree node that contains more tree nodes.
+        #[derive(JsonSchema)]
+        #[allow(dead_code)]
+        struct Node {
+            label: String,
+            children: Vec<Node>,
+        }
+
+        let schema = generate::<Node>();
+        assert!(contains_ref(&schema), "recursive types fall back to $ref");
+        assert!(!contains_ref(&generate::<Contact>()));
+    }
+
+    #[test]
+    fn contains_ref_ignores_a_property_named_ref() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "$ref": {"type": "string"},
+                "$defs": {"type": "integer"}
+            }
+        });
+        assert!(
+            !contains_ref(&schema),
+            "property names are data, not keywords"
         );
     }
 
