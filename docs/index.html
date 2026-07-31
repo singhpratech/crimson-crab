@@ -593,13 +593,13 @@
         </div>
 
         <div class="panel active" id="p-basic" role="tabpanel" aria-labelledby="tab-basic" tabindex="0">
-<pre><code><span class="k">use</span> crimson_crab::{<span class="t">Client</span>, <span class="t">MessagesRequest</span>, <span class="t">MessageParam</span>, models_ids};
+<pre><code><span class="k">use</span> crimson_crab::{<span class="t">Client</span>, <span class="t">MessagesRequest</span>, <span class="t">MessageParam</span>, model_ids};
 
 <span class="c">// Reads ANTHROPIC_API_KEY from the environment.</span>
 <span class="k">let</span> client = <span class="t">Client</span>::<span class="fn">from_env</span>()<span class="pu">?</span>;
 
 <span class="k">let</span> req = <span class="t">MessagesRequest</span>::<span class="fn">builder</span>()
-    .<span class="fn">model</span>(models_ids::<span class="t">CLAUDE_OPUS_4_8</span>)
+    .<span class="fn">model</span>(model_ids::<span class="t">CLAUDE_OPUS_5</span>)
     .<span class="fn">max_tokens</span>(<span class="n">1024</span>)
     .<span class="fn">system</span>(<span class="s">"You are terse."</span>)
     .<span class="fn">messages</span>(<span class="m">vec!</span>[<span class="t">MessageParam</span>::<span class="fn">user</span>(<span class="s">"Hello, Claude"</span>)])
@@ -634,7 +634,7 @@
         </div>
 
         <div class="panel" id="p-tool" role="tabpanel" aria-labelledby="tab-tool" tabindex="0" hidden>
-<pre><code><span class="k">use</span> crimson_crab::{<span class="t">Tool</span>, <span class="t">MessagesRequest</span>, <span class="t">StopReason</span>, models_ids};
+<pre><code><span class="k">use</span> crimson_crab::{<span class="t">Tool</span>, <span class="t">MessagesRequest</span>, <span class="t">StopReason</span>, model_ids};
 
 <span class="k">let</span> weather = <span class="t">Tool</span>::<span class="fn">new</span>(
     <span class="s">"get_weather"</span>,
@@ -647,7 +647,7 @@
 );
 
 <span class="k">let</span> req = <span class="t">MessagesRequest</span>::<span class="fn">builder</span>()
-    .<span class="fn">model</span>(models_ids::<span class="t">CLAUDE_SONNET_5</span>)
+    .<span class="fn">model</span>(model_ids::<span class="t">CLAUDE_SONNET_5</span>)
     .<span class="fn">max_tokens</span>(<span class="n">1024</span>)
     .<span class="fn">tools</span>(<span class="m">vec!</span>[weather.<span class="fn">into</span>()])
     .<span class="fn">messages</span>(messages.<span class="fn">clone</span>())
@@ -751,6 +751,7 @@
           <a href="https://crates.io/crates/crimson-crab">crates.io</a>
           <a href="https://docs.rs/crimson-crab">docs.rs</a>
           <a href="https://github.com/singhpratech/crimson-crab">GitHub</a>
+          <a href="https://github.com/singhpratech/crimson-crab-mcp-template">MCP server template</a>
         </div>
         <div class="foot-col">
           <h4>Explore</h4>
