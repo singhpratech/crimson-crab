@@ -165,6 +165,10 @@ Positioning: **the best way to build Claude-powered applications in Rust.** Lead
 
 Structure: hero (crab mark + tagline "The production-grade Rust SDK for Anthropic's Claude API" + one-line value prop like "Everything the Claude API can do, in idiomatic Rust — streaming, tools, thinking, caching, batches — with zero-surprise types and bulletproof retries"); badges (crates.io, docs.rs, CI, license, MSRV); `cargo add crimson-crab` + 30-second quickstart that WOWs; "Why crimson-crab" section selling the differentiators as benefits (wire-faithful types = your code never breaks on new models; forward-compatible enums = future models work day one incl. Fable/Mythos class; tokio-free public API = runs anywhere incl. WASM; official-SDK-parity retries = production-grade out of the box; every feature covered by tests against real API fixtures); feature matrix vs "generic multi-provider clients" (confident, factual, never trash-talking by name); streaming + tool-loop examples; roadmap teaser; MSRV; semver policy (minor bumps may add enum variants — safe because wire enums are `#[non_exhaustive]`); footer with the single affiliation line + Crimson Crab branding.
 
-## v0.2+ roadmap (do NOT build now)
+## Roadmap beyond the current release
 
-Files API (beta), schemars-derived tool schemas + `#[tool]` macro crate, tool-runner loop helper, Admin/Usage API, Vertex/Bedrock transports, structured-output `parse::<T>()` helper, compaction/context-management betas, fine-grained tool streaming.
+Shipped in 0.2.x: schemars-derived tool schemas (`Tool::from_type`) and the
+structured-output `parse::<T>()` helper, both behind the optional `schemars`
+feature. Still ahead (see ROADMAP.md): `#[tool]` macro crate, tool-runner loop
+helper, Files API (beta), Admin/Usage API, Vertex/Bedrock transports,
+compaction/context-management betas, fine-grained tool streaming.

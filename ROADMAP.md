@@ -24,15 +24,18 @@ to discuss before starting something large.
 - Full wire types for messages, tools, thinking, prompt caching, usage.
 - Model id constants; examples for the core flows.
 
-## 0.2 — ergonomics for tools and structured output
+## Shipped (0.2.x) — ergonomics for tools and structured output
 
-- **`messages().parse::<T>()`** — a typed helper that constrains the response
-  with `output_config.format` and deserializes it straight into your struct,
-  returning a validation error rather than loose JSON.
-- **Tool definitions from Rust types** — derive a tool's JSON schema from a
-  `schemars`-annotated struct so a tool is defined once, in Rust, with no
-  hand-written schema to drift.
-- More examples: axum SSE passthrough, and a minimal typed-tools agent.
+- **`messages().parse::<T>()`** — derives `T`'s schema, tightens it into the
+  structured-output shape, and deserializes the response into `T`, returning
+  `ParsedMessage<T>` with the whole `Message`. Recursive types are rejected
+  client-side with a clear error. (0.2.0, hardened in 0.2.1)
+- **`Tool::from_type::<T>()`** — a custom tool's `input_schema` derived from a
+  `schemars`-annotated struct, doc comments becoming schema descriptions, so a
+  tool is defined once, in Rust, with no hand-written schema to drift. (0.2.0)
+- Examples: `typed_parse` and `typed_tools` (a minimal typed-tools agent).
+
+Still on deck from 0.2: an axum SSE passthrough example.
 
 ## 0.3 — the agentic loop
 
