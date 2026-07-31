@@ -133,6 +133,27 @@ pub enum Error {
     /// A configuration error (e.g. a missing API key or invalid builder input).
     #[error("configuration error: {0}")]
     Config(String),
+    /// A structured-output response could not be turned into the requested
+    /// type by [`Messages::parse`].
+    ///
+    /// This covers both "there was nothing valid to parse" (the model refused,
+    /// or the response was truncated by `max_tokens` before the JSON was
+    /// closed) and "the text did not match the type". `message` summarizes the
+    /// offending response — its id, model, and stop reason — so the failure can
+    /// be reported without threading the whole [`Message`] through; `source`
+    /// carries the underlying `serde_json` failure when there was one.
+    ///
+    /// [`Messages::parse`]: crate::api::Messages::parse
+    /// [`Message`]: crate::types::Message
+    #[cfg(feature = "schemars")]
+    #[error("structured output error: {message}")]
+    StructuredOutput {
+        /// A summary of what went wrong and of the response it happened on.
+        message: String,
+        /// The deserialization failure, when the response text was parsed at
+        /// all; `None` when the stop reason ruled the response out first.
+        source: Option<serde_json::Error>,
+    },
 }
 
 impl From<reqwest::Error> for Error {

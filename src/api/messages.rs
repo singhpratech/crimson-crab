@@ -6,10 +6,26 @@ use serde::{Deserialize, Serialize};
 use crate::client::Client;
 use crate::error::{Error, Result};
 use crate::streaming::MessageStream;
+#[cfg(feature = "schemars")]
+use crate::types::StopReason;
 use crate::types::{
     CacheControl, Message, MessageParam, Metadata, OutputConfig, SystemPrompt, ThinkingConfig,
     ToolChoice, ToolUnion,
 };
+
+/// Summarizes a response for an [`Error::StructuredOutput`] message: what went
+/// wrong, plus the fields identifying the response it went wrong on.
+#[cfg(feature = "schemars")]
+fn describe(message: &Message, cause: &str) -> String {
+    let stop_reason = message
+        .stop_reason
+        .as_ref()
+        .map_or("none", StopReason::as_str);
+    format!(
+        "{cause} (message id: {}, model: {}, stop_reason: {stop_reason})",
+        message.id, message.model
+    )
+}
 
 /// Merges the entries of `extra` into a JSON object `value`, leaving `value`
 /// untouched if it is not an object or `extra` is empty.
@@ -478,6 +494,50 @@ pub struct CountTokensResponse {
     pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
+/// A [`Message`] together with its response text deserialized into `T`, as
+/// returned by [`Messages::parse`].
+///
+/// The whole [`Message`] is kept alongside the parsed value so the usual
+/// response metadata — `usage`, `stop_reason`, `id`, `model` — stays reachable.
+///
+/// # Examples
+///
+/// ```
+/// use crimson_crab::api::ParsedMessage;
+/// use crimson_crab::types::Message;
+///
+/// #[derive(Debug, serde::Deserialize)]
+/// struct Answer {
+///     answer: String,
+/// }
+///
+/// let message: Message = serde_json::from_value(serde_json::json!({
+///     "id": "msg_01ABC",
+///     "type": "message",
+///     "role": "assistant",
+///     "model": "claude-opus-5",
+///     "content": [{"type": "text", "text": "{\"answer\": \"42\"}"}],
+///     "stop_reason": "end_turn",
+///     "usage": {"input_tokens": 8, "output_tokens": 6}
+/// }))
+/// .unwrap();
+///
+/// let parsed = ParsedMessage {
+///     data: Answer { answer: "42".to_string() },
+///     message,
+/// };
+/// assert_eq!(parsed.data.answer, "42");
+/// assert_eq!(parsed.message.usage.output_tokens, 6);
+/// ```
+#[cfg(feature = "schemars")]
+#[derive(Clone, Debug, PartialEq)]
+pub struct ParsedMessage<T> {
+    /// The response text deserialized into `T`.
+    pub data: T,
+    /// The full message the value was parsed from.
+    pub message: Message,
+}
+
 /// A handle to the Messages endpoint, obtained via [`Client::messages`].
 ///
 /// [`Client::messages`]: crate::Client::messages
@@ -545,6 +605,101 @@ impl<'a> Messages<'a> {
             .http()
             .post_json("/v1/messages", &body, &request.betas)
             .await
+    }
+
+    /// Creates a message whose response is constrained to `T`'s JSON Schema,
+    /// and deserializes that response into `T`.
+    ///
+    /// The schema is derived from `T` with [`schemars`] and tightened into the
+    /// shape `output_config.format` requires: subschemas are inlined, every
+    /// object schema gets `"additionalProperties": false`, and every property
+    /// is listed in `required`. Requiring everything is safe because
+    /// `Option<T>` fields are *nullable* in the derived schema rather than
+    /// absent, so the model must emit the key but may emit `null` for it.
+    ///
+    /// The schema is set on a **clone** of `request`, so the caller's request is
+    /// untouched. Any `output_config.effort` already set is preserved; an
+    /// `output_config.format` already set is **overridden** — the point of this
+    /// method is that `T` defines the format.
+    ///
+    /// # Errors
+    ///
+    /// Beyond the transport and API errors [`create`](Messages::create) can
+    /// return, this returns [`Error::StructuredOutput`] when the model refused
+    /// ([`StopReason::Refusal`]), when the response was truncated
+    /// ([`StopReason::MaxTokens`], which leaves the JSON unclosed), or when the
+    /// response text does not deserialize into `T`.
+    ///
+    /// Note that the API accepts a subset of JSON Schema. `schemars` emits
+    /// keywords outside that subset for some Rust types — notably the
+    /// `minimum: 0` bound on unsigned integers — which the API may reject with
+    /// a `400`; prefer signed integer types in `T` if you hit that.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use crimson_crab::api::MessagesRequest;
+    /// use crimson_crab::types::MessageParam;
+    ///
+    /// #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+    /// struct Contact {
+    ///     /// The contact's full name.
+    ///     name: String,
+    ///     /// The employer, or `null` if none was mentioned.
+    ///     company: Option<String>,
+    /// }
+    ///
+    /// # async fn demo(client: &crimson_crab::Client) -> crimson_crab::Result<()> {
+    /// let request = MessagesRequest::builder()
+    ///     .model("claude-opus-5")
+    ///     .max_tokens(512)
+    ///     .messages(vec![MessageParam::user("Extract: Ada Lovelace, no employer.")])
+    ///     .build()?;
+    ///
+    /// let parsed = client.messages().parse::<Contact>(&request).await?;
+    /// println!("{} ({:?})", parsed.data.name, parsed.data.company);
+    /// println!("output tokens: {}", parsed.message.usage.output_tokens);
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[cfg(feature = "schemars")]
+    pub async fn parse<T>(&self, request: &MessagesRequest) -> Result<ParsedMessage<T>>
+    where
+        T: serde::de::DeserializeOwned + schemars::JsonSchema,
+    {
+        let mut schema = crate::schema::generate::<T>();
+        crate::schema::strictify(&mut schema);
+
+        let mut request = request.clone();
+        let output_config = request
+            .output_config
+            .get_or_insert_with(OutputConfig::default);
+        output_config.format = Some(crate::types::OutputFormat::json_schema(schema));
+
+        let message = self.create(&request).await?;
+
+        // A refusal carries no answer at all, and a `max_tokens` cut leaves the
+        // JSON unterminated: report both against the response rather than
+        // letting them surface as an opaque "EOF while parsing" serde error.
+        let blocker = match message.stop_reason {
+            Some(StopReason::Refusal) => Some("the model refused to answer"),
+            Some(StopReason::MaxTokens) => Some("the response hit `max_tokens` and is truncated"),
+            _ => None,
+        };
+        if let Some(blocker) = blocker {
+            return Err(Error::StructuredOutput {
+                message: describe(&message, blocker),
+                source: None,
+            });
+        }
+
+        match serde_json::from_str(&message.text()) {
+            Ok(data) => Ok(ParsedMessage { data, message }),
+            Err(source) => Err(Error::StructuredOutput {
+                message: describe(&message, "the response text did not match the schema"),
+                source: Some(source),
+            }),
+        }
     }
 
     /// Streams a message (`POST /v1/messages` with `"stream": true`).

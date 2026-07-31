@@ -17,6 +17,8 @@ pub use batches::{
     BatchRequestItem, BatchResult, BatchResultOutcome, BatchResults, BatchStatus, BatchSucceeded,
     Batches, MessageBatch,
 };
+#[cfg(feature = "schemars")]
+pub use messages::ParsedMessage;
 pub use messages::{
     CountTokensRequest, CountTokensResponse, Messages, MessagesRequest, MessagesRequestBuilder,
 };

@@ -17,6 +17,15 @@
 //! endpoints, and SSE [`streaming`] (`client.messages().stream(&req)`) are all
 //! implemented.
 //!
+//! ## Cargo features
+//!
+//! * `rustls-tls` *(default)* / `native-tls` — the TLS backend used on native
+//!   targets; exactly one is required.
+//! * `schemars` — derive JSON Schemas from Rust types. Adds
+//!   `client.messages().parse::<T>(&request)`, which constrains a response to
+//!   `T`'s schema and deserializes it, and `Tool::from_type::<T>(name, desc)`,
+//!   which builds a tool's `input_schema` from its argument type.
+//!
 //! ## Quickstart
 //!
 //! ```no_run
@@ -110,6 +119,8 @@ pub mod client;
 pub mod error;
 mod http;
 pub mod model_ids;
+#[cfg(feature = "schemars")]
+mod schema;
 pub mod streaming;
 pub mod types;
 
@@ -130,6 +141,8 @@ pub use streaming::{ContentDelta, MessageStream, StreamEvent};
 /// let _ = MessagesRequest::builder().model("claude-opus-4-8");
 /// ```
 pub mod prelude {
+    #[cfg(feature = "schemars")]
+    pub use crate::api::ParsedMessage;
     pub use crate::api::{CountTokensRequest, CountTokensResponse, MessagesRequest};
     pub use crate::client::{Client, ClientBuilder};
     // `Error` and the `Result<T>` alias are deliberately NOT re-exported here:

@@ -4,6 +4,43 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - Unreleased
+
+### Added
+
+- **`schemars` feature** (optional, not on by default) — JSON Schemas derived
+  from Rust types, so a schema and the type that parses against it cannot drift
+  apart. Enable with `cargo add crimson-crab --features schemars`.
+- **`messages().parse::<T>()`** derives `T`'s schema, tightens it into the shape
+  `output_config.format` requires (subschemas inlined, `additionalProperties:
+  false`, every property `required`), sets it on a **clone** of the request, and
+  deserializes the response text into `T`. Returns **`ParsedMessage<T>`**
+  (`data` plus the whole `Message`), so `usage` and `stop_reason` stay reachable.
+  An `output_config.effort` already on the request is preserved; an
+  `output_config.format` already on it is overridden. `Option<T>` fields become
+  nullable properties rather than absent ones, which is what makes requiring
+  every property safe.
+- **`Tool::from_type::<T>(name, description)`** builds a custom tool's
+  `input_schema` from its argument type, with subschemas inlined and the schema
+  otherwise exactly as `schemars` emits it (no strictify pass — the strict-tool
+  contract stays opt-in via `.strict(true)`). Doc comments on `T` and its fields
+  become schema `description`s.
+- **`Error::StructuredOutput { message, source }`** (gated on `schemars`) —
+  returned by `parse` when the model refused, when the response was truncated by
+  `max_tokens`, or when the text did not deserialize into `T`. `message`
+  summarizes the offending response (id, model, stop reason); `source` carries
+  the `serde_json` failure when there was one. Adding a variant to `Error` is
+  minor-safe: it is `#[non_exhaustive]`.
+- **Examples.** `typed_parse` (structured output end-to-end) and `typed_tools`
+  (an agentic loop whose tool schema is derived from its argument type), both
+  gated behind `required-features = ["schemars"]`.
+
+### Changed
+
+- **Nothing breaks.** The default feature set, the wire types, and every
+  existing signature are unchanged; 0.2.0 is a minor bump only because it adds
+  public API.
+
 ## [0.1.2] - 2026-07-26
 
 ### Added

@@ -1,9 +1,10 @@
 //! Tool definitions, the tool-list union, tool choice, and tool-result content.
 //!
-//! In v0.1 custom tool schemas are raw [`serde_json::Value`]s (typed/derived
-//! schemas are a v0.2 feature). Server tools (`web_search_*`, `code_execution`,
-//! `bash`, …) are passed through untouched via [`ToolUnion::Raw`] so the SDK
-//! does not need to model each one.
+//! Custom tool schemas are raw [`serde_json::Value`]s; on the `schemars`
+//! feature, `Tool::from_type` derives one from the tool's argument type
+//! instead. Server tools (`web_search_*`, `code_execution`, `bash`, …) are
+//! passed through untouched via [`ToolUnion::Raw`] so the SDK does not need to
+//! model each one.
 
 use serde::de::{self, Deserializer};
 use serde::ser::SerializeMap;
@@ -77,6 +78,56 @@ impl Tool {
             strict: None,
             cache_control: None,
         }
+    }
+
+    /// Creates a custom tool whose `input_schema` is derived from `T`.
+    ///
+    /// `T`'s JSON Schema is generated with [`schemars`], with every subschema
+    /// inlined so the definition is self-contained. It is otherwise emitted as
+    /// `schemars` produces it: tool schemas are ordinary JSON Schema, so
+    /// `Option<T>` arguments stay optional and unlisted fields stay permitted.
+    /// Call [`strict`](Tool::strict) if you want the API to enforce the schema
+    /// exactly — that mode additionally requires `additionalProperties: false`
+    /// and a complete `required` list, which `T` must therefore express itself
+    /// (e.g. via `#[serde(deny_unknown_fields)]` and non-`Option` fields).
+    ///
+    /// Doc comments on `T` and its fields become schema `description`s, so the
+    /// model sees them.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use crimson_crab::types::Tool;
+    ///
+    /// /// Arguments for the weather lookup.
+    /// #[derive(serde::Deserialize, schemars::JsonSchema)]
+    /// struct GetWeather {
+    ///     /// The city to look up, e.g. "Paris".
+    ///     location: String,
+    /// }
+    ///
+    /// let tool = Tool::from_type::<GetWeather>(
+    ///     "get_weather",
+    ///     "Get the current weather for a location",
+    /// );
+    /// assert_eq!(tool.name, "get_weather");
+    /// assert_eq!(tool.input_schema["type"], serde_json::json!("object"));
+    /// assert_eq!(
+    ///     tool.input_schema["properties"]["location"]["description"],
+    ///     serde_json::json!("The city to look up, e.g. \"Paris\".")
+    /// );
+    ///
+    /// // The model's `input` deserializes straight into the argument type.
+    /// let args: GetWeather =
+    ///     serde_json::from_value(serde_json::json!({"location": "Paris"})).unwrap();
+    /// assert_eq!(args.location, "Paris");
+    /// ```
+    #[cfg(feature = "schemars")]
+    pub fn from_type<T: schemars::JsonSchema>(
+        name: impl Into<String>,
+        description: impl Into<String>,
+    ) -> Self {
+        Self::new(name, description, crate::schema::generate::<T>())
     }
 
     /// Sets `strict` mode and returns the updated tool.

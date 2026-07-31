@@ -77,6 +77,7 @@ async fn main() -> crimson_crab::Result<()> {
 | Extended thinking (adaptive / budgeted / display) | ✅ | rare |
 | Prompt caching (`cache_control`, 5m/1h TTLs) | ✅ | rare |
 | Structured output (`output_config` JSON Schema) | ✅ | rare |
+| Schemas derived from Rust types (`schemars` feature) | ✅ | varies |
 | Message Batches (create / poll / cancel / stream results) | ✅ | rare |
 | Models endpoint (get / list with pagination) | ✅ | varies |
 | Forward-compatible unknown-variant handling | ✅ | varies |
@@ -201,6 +202,77 @@ loop {
 # }
 ```
 
+## Typed schemas — `schemars` feature
+
+Enable the optional `schemars` feature and the JSON Schema comes from your Rust type, so the schema and the type that parses against it cannot drift apart:
+
+```sh
+cargo add crimson-crab --features schemars
+```
+
+`messages().parse::<T>()` derives `T`'s schema, tightens it into the shape structured output requires (subschemas inlined, `additionalProperties: false`, every property `required`), sets it on a copy of your request, and deserializes the response — while handing back the whole `Message` so `usage` and `stop_reason` stay in reach. `Option<T>` fields become *nullable* properties rather than absent ones, so "everything is required" costs you nothing. Doc comments ride along as schema `description`s the model reads.
+
+```rust,no_run
+# #[cfg(feature = "schemars")]
+# mod demo {
+use crimson_crab::prelude::*;
+use schemars::JsonSchema;
+use serde::Deserialize;
+
+/// A contact extracted from free-form text.
+#[derive(Debug, Deserialize, JsonSchema)]
+struct Contact {
+    /// The contact's full name.
+    name: String,
+    /// The employer, or `null` if none was mentioned.
+    company: Option<String>,
+}
+
+# async fn run(client: &Client) -> crimson_crab::Result<()> {
+let request = MessagesRequest::builder()
+    .model("claude-opus-5")
+    .max_tokens(512)
+    .messages(vec![MessageParam::user("Extract: Ada Lovelace, no employer.")])
+    .build()?;
+
+let parsed = client.messages().parse::<Contact>(&request).await?;
+println!("{} ({:?})", parsed.data.name, parsed.data.company);
+println!("{} output tokens", parsed.message.usage.output_tokens);
+# Ok(())
+# }
+# }
+```
+
+A refusal or a `max_tokens` truncation is reported as `Error::StructuredOutput` naming the offending message, rather than surfacing as an opaque "EOF while parsing" from serde.
+
+The same derivation builds tool schemas. `Tool::from_type::<T>(name, description)` fills in `input_schema` from the argument type, and the model's `input` deserializes straight back into it:
+
+```rust,no_run
+# #[cfg(feature = "schemars")]
+# mod demo {
+use crimson_crab::prelude::*;
+use schemars::JsonSchema;
+use serde::Deserialize;
+
+/// The arguments of the weather tool.
+#[derive(Deserialize, JsonSchema)]
+struct GetWeather {
+    /// The city to look up, e.g. "Paris".
+    location: String,
+}
+
+# fn run(input: &serde_json::Value) -> crimson_crab::Result<()> {
+let tool = Tool::from_type::<GetWeather>("get_weather", "Get the current weather for a location");
+
+let args: GetWeather = serde_json::from_value(input.clone())?;
+println!("{} → {}", tool.name, args.location);
+# Ok(())
+# }
+# }
+```
+
+Tool schemas are left exactly as `schemars` emits them — ordinary JSON Schema, where `Option<T>` arguments stay optional — because the strict-tool contract is opt-in via `.strict(true)`.
+
 ## Prompt caching & token budgeting
 
 The simplest caching path: a plain-string system prompt plus a top-level `cache_control`, which auto-places one breakpoint on the last cacheable block — no per-block wiring.
@@ -308,10 +380,11 @@ Two honest caveats for edge/browser deployments: the retry loop cannot sleep on 
 
 ## More examples
 
-Runnable programs live in [`examples/`](examples): `basic`, `streaming`, `tool_use`, `thinking`, `prompt_caching`, and `structured_output`. There's also `live_smoke` — a manual end-to-end check that makes real API calls (token count + non-streaming + streaming). Run one with:
+Runnable programs live in [`examples/`](examples): `basic`, `streaming`, `tool_use`, `thinking`, `prompt_caching`, and `structured_output`, plus `typed_parse` and `typed_tools` on the `schemars` feature. There's also `live_smoke` — a manual end-to-end check that makes real API calls (token count + non-streaming + streaming). Run one with:
 
 ```sh
 ANTHROPIC_API_KEY=sk-ant-... cargo run --example streaming
+ANTHROPIC_API_KEY=sk-ant-... cargo run --features schemars --example typed_parse
 ```
 
 ## Build a Claude-powered MCP server
@@ -326,7 +399,7 @@ cargo generate --git https://github.com/singhpratech/crimson-crab-mcp-template
 
 ## Roadmap
 
-Shipping fast and iterating; spec fidelity and release cadence are the whole point. On deck for v0.2+: the Files API (beta), `schemars`-derived tool schemas with a `#[tool]` macro, typed tool-input deserialization, a tool-runner loop helper, a `batches().poll_until_ended()` convenience, a `parse::<T>()` structured-output helper, the Admin/Usage API, and Vertex/Bedrock transports. The `model` field is an open string everywhere, so any model Anthropic ships works today with zero changes.
+Shipping fast and iterating; spec fidelity and release cadence are the whole point. `schemars`-derived schemas — `parse::<T>()` and `Tool::from_type::<T>()` — landed in 0.2.0. Still on deck: the Files API (beta), a `#[tool]` attribute macro, a tool-runner loop helper, a `batches().poll_until_ended()` convenience, the Admin/Usage API, and Vertex/Bedrock transports. The `model` field is an open string everywhere, so any model Anthropic ships works today with zero changes.
 
 ## Minimum supported Rust version
 

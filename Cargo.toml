@@ -1,6 +1,6 @@
 [package]
 name = "crimson-crab"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.75"
 authors = ["singhpratech"]
@@ -13,6 +13,11 @@ homepage = "https://singhpratech.github.io/crimson-crab/"
 readme = "README.md"
 documentation = "https://docs.rs/crimson-crab"
 
+# Document the optional `schemars` API on docs.rs, which otherwise builds with
+# default features only.
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream"] }
 serde = { version = "1", features = ["derive"] }
@@ -23,6 +28,7 @@ futures-util = "0.3"
 bytes = "1"
 pin-project-lite = "0.2"
 fastrand = "2"
+schemars = { version = "1", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = [
@@ -39,3 +45,14 @@ anyhow = "1"
 default = ["rustls-tls"]
 rustls-tls = ["reqwest/rustls-tls"]
 native-tls = ["reqwest/native-tls"]
+# Derive JSON Schemas from Rust types: `messages().parse::<T>()` and
+# `Tool::from_type::<T>()`. Not enabled by default.
+schemars = ["dep:schemars"]
+
+[[example]]
+name = "typed_parse"
+required-features = ["schemars"]
+
+[[example]]
+name = "typed_tools"
+required-features = ["schemars"]
