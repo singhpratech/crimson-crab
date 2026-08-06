@@ -15,7 +15,9 @@
 //!
 //! The wire types, the HTTP [`Client`], the Messages, Models, and Batches
 //! endpoints, and SSE [`streaming`] (`client.messages().stream(&req)`) are all
-//! implemented.
+//! implemented. The agentic tool loop can be driven for you by
+//! [`ToolRunner`](api::ToolRunner) (`client.messages().runner(req)`), or by
+//! hand if you would rather own the control flow.
 //!
 //! ## Cargo features
 //!
@@ -143,7 +145,9 @@ pub use streaming::{ContentDelta, MessageStream, StreamEvent};
 pub mod prelude {
     #[cfg(feature = "schemars")]
     pub use crate::api::ParsedMessage;
-    pub use crate::api::{CountTokensRequest, CountTokensResponse, MessagesRequest};
+    pub use crate::api::{
+        CountTokensRequest, CountTokensResponse, MessagesRequest, ToolRunResult, ToolRunner,
+    };
     pub use crate::client::{Client, ClientBuilder};
     // `Error` and the `Result<T>` alias are deliberately NOT re-exported here:
     // a glob import that shadows `std::result::Result` breaks common downstream

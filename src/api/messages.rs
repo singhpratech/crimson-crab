@@ -3,6 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::api::tool_runner::ToolRunner;
 use crate::client::Client;
 use crate::error::{Error, Result};
 use crate::streaming::MessageStream;
@@ -723,6 +724,60 @@ impl<'a> Messages<'a> {
                 source: Some(source),
             }),
         }
+    }
+
+    /// Starts a [`ToolRunner`] over `request`: the agentic
+    /// `create → run tools → feed results → repeat` loop, driven for you.
+    ///
+    /// The request is taken **by value** because the runner owns it for the
+    /// duration of the run — registering a tool appends it to `tools`, and each
+    /// turn appends the assistant turn and the `tool_result` message to
+    /// `messages`. Set everything else (model, system prompt, thinking,
+    /// `tool_choice`, …) on the request as usual; the runner only touches those
+    /// two fields.
+    ///
+    /// See [`ToolRunner`] for registering handlers and [`ToolRunner::run`] for
+    /// the loop's exact semantics. The manual loop — `create`, match on
+    /// `stop_reason == Some(StopReason::ToolUse)`, append
+    /// `message.into_param()` — remains fully supported for callers who want to
+    /// own the control flow.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use crimson_crab::api::MessagesRequest;
+    /// use crimson_crab::types::{MessageParam, Tool};
+    /// use serde::Deserialize;
+    ///
+    /// /// The arguments of the weather tool.
+    /// #[derive(Deserialize)]
+    /// struct GetWeather {
+    ///     location: String,
+    /// }
+    ///
+    /// # async fn demo(client: &crimson_crab::Client, weather: Tool) -> crimson_crab::Result<()> {
+    /// let request = MessagesRequest::builder()
+    ///     .model("claude-opus-5")
+    ///     .max_tokens(1024)
+    ///     .messages(vec![MessageParam::user("What's the weather in Paris?")])
+    ///     .build()?;
+    ///
+    /// let result = client
+    ///     .messages()
+    ///     .runner(request)
+    ///     .tool(weather, |args: GetWeather| async move {
+    ///         Ok::<_, String>(format!("22C and sunny in {}", args.location))
+    ///     })
+    ///     .max_turns(8)
+    ///     .run()
+    ///     .await?;
+    ///
+    /// println!("{} (after {} turns)", result.message.text(), result.turns);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn runner(&self, request: MessagesRequest) -> ToolRunner<'a> {
+        ToolRunner::new(*self, request)
     }
 
     /// Streams a message (`POST /v1/messages` with `"stream": true`).

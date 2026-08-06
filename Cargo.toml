@@ -1,6 +1,6 @@
 [package]
 name = "crimson-crab"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.75"
 authors = ["singhpratech"]
@@ -55,4 +55,8 @@ required-features = ["schemars"]
 
 [[example]]
 name = "typed_tools"
+required-features = ["schemars"]
+
+[[example]]
+name = "tool_runner"
 required-features = ["schemars"]

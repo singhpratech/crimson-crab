@@ -7,10 +7,12 @@
 //! * [`messages`] — create a message and count tokens.
 //! * [`models`] — retrieve and list model metadata.
 //! * [`batches`] — create, poll, cancel, and stream Message Batches.
+//! * [`tool_runner`] — drive the agentic tool loop over your own handlers.
 
 pub mod batches;
 pub mod messages;
 pub mod models;
+pub mod tool_runner;
 
 pub use batches::{
     BatchCanceled, BatchErrored, BatchExpired, BatchListParams, BatchPage, BatchRequestCounts,
@@ -23,3 +25,4 @@ pub use messages::{
     CountTokensRequest, CountTokensResponse, Messages, MessagesRequest, MessagesRequestBuilder,
 };
 pub use models::{ModelInfo, ModelListParams, ModelPage, Models};
+pub use tool_runner::{ToolRunResult, ToolRunner};

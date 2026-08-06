@@ -133,6 +133,26 @@ pub enum Error {
     /// A configuration error (e.g. a missing API key or invalid builder input).
     #[error("configuration error: {0}")]
     Config(String),
+    /// A [`ToolRunner`] run ended without the model finishing its answer.
+    ///
+    /// Currently this means one thing: the turn cap was reached while the model
+    /// was still emitting `tool_use` blocks. `turns` is how many API
+    /// round-trips were made (equal to the configured `max_turns`), and
+    /// `message` names the tools the model was still asking for, so a cap that
+    /// is merely too low is easy to tell apart from a model stuck in a loop.
+    ///
+    /// Tool *failures* never reach here: a handler error, an undeserializable
+    /// input, and an unregistered tool name are all reported to the model as an
+    /// errored `tool_result` so it can recover.
+    ///
+    /// [`ToolRunner`]: crate::api::ToolRunner
+    #[error("tool runner error after {turns} turn(s): {message}")]
+    ToolRunner {
+        /// What stopped the run.
+        message: String,
+        /// The number of API round-trips made before the run stopped.
+        turns: usize,
+    },
     /// A structured-output response could not be turned into the requested
     /// type by [`Messages::parse`].
     ///

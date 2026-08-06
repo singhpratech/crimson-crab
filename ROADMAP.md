@@ -37,12 +37,23 @@ to discuss before starting something large.
 
 Still on deck from 0.2: an axum SSE passthrough example.
 
-## 0.3 — the agentic loop
+## Shipped (0.3.x) — the agentic loop
 
-- **Tool runner** — an opt-in helper that drives the
-  `create → run tools → feed results → repeat` loop for user-defined tools, with
-  per-turn hooks (approval, logging, result rewriting) for callers who want them.
-  The manual loop stays fully supported for those who'd rather own it.
+- **Tool runner** — `messages().runner(request)` drives the
+  `create → run tools → feed results → repeat` loop for user-defined tools.
+  `.tool(tool, handler)` registers a tool and its typed async handler together
+  (`.tool_raw` for untyped inputs); parallel tool calls are executed
+  concurrently and answered in one message; a handler error, an input that does
+  not fit the handler's argument type, and an unregistered tool name all come
+  back to the model as an errored `tool_result` rather than ending the run.
+  `.max_turns(n)` caps the round-trips, and hitting the cap is
+  `Error::ToolRunner`. The manual loop stays fully supported for those who'd
+  rather own it.
+- **Per-turn hooks — partially shipped.** `.on_turn(f)` observes each response
+  before its tools run, which covers logging and progress. The other two hooks
+  the 0.3 plan named — approving a tool call before it runs, and rewriting a
+  result on the way back — still need a design that can say "no" mid-run; they
+  are the next thing to land here.
 
 ## 0.4 — Files API
 

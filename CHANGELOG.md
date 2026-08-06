@@ -4,6 +4,54 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-06
+
+### Added
+
+- **Tool runner** — `client.messages().runner(request)` drives the agentic
+  `create → run tools → feed results → repeat` loop, so the common case is no
+  longer a hand-written loop. It takes the request by value and owns it: each
+  registered tool is appended to `tools`, and each turn appends the assistant
+  turn plus a single user message of `tool_result` blocks to `messages`. The
+  manual loop stays fully supported and unchanged.
+- **`ToolRunner::tool(tool, handler)`** registers a tool *and* its typed async
+  handler in one place, so a tool definition and the code that implements it
+  cannot drift apart. The handler takes any `DeserializeOwned` argument type and
+  returns any `Serialize` value; a `String` result is sent as the `tool_result`
+  text, anything else as its JSON. Not gated on the `schemars` feature — it
+  accepts any `Tool`, whether the schema was hand-written or derived with
+  `Tool::from_type`. **`ToolRunner::tool_raw`** is the same with a
+  `serde_json::Value` handler, for inputs that aren't worth a struct.
+- **Tool failures are data, not errors.** A handler `Err`, an input that does
+  not deserialize into the handler's argument type, and a call to an
+  unregistered tool all come back as a `tool_result` with `is_error: true`
+  carrying an explanation, and the loop continues so the model can correct
+  itself. Nothing is ever silently dropped.
+- **Parallel tool calls need no special handling**: every `tool_use` block in a
+  response is executed concurrently, and all of the results go back in one user
+  message, in the order the calls appeared.
+- **`ToolRunner::max_turns(n)`** caps the number of API round-trips (default
+  `10`), and **`ToolRunner::on_turn(f)`** observes every response as it arrives,
+  before its tools run — the logging/progress hook. Richer per-turn hooks
+  (approving a call before it runs, rewriting a result on the way back) are
+  planned; they need a shape that can say "no", which this one deliberately
+  does not have.
+- **`ToolRunResult`** carries the final `Message`, the whole conversation as
+  `Vec<MessageParam>` (ending with the final assistant turn, so a follow-up
+  question is one `push` away), and the number of turns used.
+- **`Error::ToolRunner { message, turns }`** — returned when the turn cap is
+  reached while the model is still requesting tools; `turns` is how many
+  round-trips were made. Adding a variant to `Error` is not breaking: it is
+  `#[non_exhaustive]`.
+- Example: `tool_runner` (a two-tool weather agent, `--features schemars`).
+
+### Notes
+
+- Any stop reason other than `tool_use` ends a run and is returned as-is,
+  including `refusal` and `max_tokens`. The runner is lower level than
+  `parse::<T>()` and does not turn an outcome into an error — read
+  `result.message.stop_reason` and decide for yourself.
+
 ## [0.2.1] - 2026-07-31
 
 ### Fixed

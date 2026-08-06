@@ -10,7 +10,7 @@ The full Claude API in idiomatic Rust — streaming, tool use, extended thinking
 [![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![MSRV](https://img.shields.io/badge/MSRV-1.75-blue.svg)](#minimum-supported-rust-version)
 
-**207 tests · zero clippy warnings · a panic-free library (`unwrap`/`expect`/`panic` denied at compile time) · MSRV 1.75 · MIT OR Apache-2.0**
+**232 tests · zero clippy warnings · a panic-free library (`unwrap`/`expect`/`panic` denied at compile time) · MSRV 1.75 · MIT OR Apache-2.0**
 
 - **Docs:** [docs.rs/crimson-crab](https://docs.rs/crimson-crab)
 - **Site:** [singhpratech.github.io/crimson-crab](https://singhpratech.github.io/crimson-crab/)
@@ -65,7 +65,7 @@ async fn main() -> crimson_crab::Result<()> {
 - **A tokio-free public API — runs anywhere.** The public surface exposes `futures_core::Stream`, not runtime-specific types; `tokio` is a dev-dependency only. The same builder code compiles for native **and** `wasm32-unknown-unknown` on default features.
 - **Official-SDK-parity retries — production-grade out of the box.** Connection errors, timeouts, `408`/`409`/`429`, and `5xx` are retried with full-jitter exponential backoff (0.5s base, 8s cap) and honor `retry-after` — capped at 60s so a hostile or broken server can't park your retry loop for hours. Streaming requests retry only before the first byte.
 - **Streaming that never truncates mid-generation.** The client uses an *idle* read timeout rather than a total-request deadline, so a long-but-actively-flowing SSE response is never cut off just because total elapsed time crossed a limit.
-- **Tested against real API fixtures.** Every content block and stream event from the wire reference has a serde round-trip test, and every endpoint has `wiremock` coverage — 207 tests, zero clippy warnings.
+- **Tested against real API fixtures.** Every content block and stream event from the wire reference has a serde round-trip test, and every endpoint has `wiremock` coverage — 232 tests, zero clippy warnings.
 
 ## Feature coverage
 
@@ -74,6 +74,7 @@ async fn main() -> crimson_crab::Result<()> {
 | Messages (create / count tokens) | ✅ | ✅ |
 | Fine-grained SSE streaming + accumulated final `Message` | ✅ | usually text-only |
 | Tool use (custom tools + server-tool passthrough) | ✅ | partial |
+| Agentic tool loop driven for you (`messages().runner`) | ✅ | varies |
 | Extended thinking (adaptive / budgeted / display) | ✅ | rare |
 | Prompt caching (`cache_control`, 5m/1h TTLs) | ✅ | rare |
 | Structured output (`output_config` JSON Schema) | ✅ | rare |
@@ -201,6 +202,50 @@ loop {
 #     Ok("tool output".to_string())
 # }
 ```
+
+## Tool runner (the loop, driven for you)
+
+Same contract, none of the bookkeeping. `messages().runner(request)` takes the request by value and owns it: registering a tool appends it to `tools`, and every turn appends the assistant turn and the `tool_result` message to `messages`. A tool is described to the model in the same place it's implemented, so the two can't drift apart.
+
+```rust,no_run
+use crimson_crab::prelude::*;
+use serde::Deserialize;
+
+/// The arguments of the weather tool — the model's `input` lands here.
+#[derive(Deserialize)]
+struct GetWeather {
+    location: String,
+}
+
+# async fn run(client: &Client, request: MessagesRequest, weather: Tool) -> crimson_crab::Result<()> {
+let result = client
+    .messages()
+    .runner(request)
+    // The tool definition and its handler, together. `.tool_raw` takes a
+    // `serde_json::Value` instead, for inputs not worth a struct.
+    .tool(weather, |args: GetWeather| async move {
+        Ok::<_, String>(format!("22C and sunny in {}", args.location))
+    })
+    .max_turns(8)                        // default 10; one turn = one round-trip
+    .on_turn(|m| eprintln!("{:?}", m.stop_reason))  // logging/progress hook
+    .run()
+    .await?;
+
+println!("{} (after {} turns)", result.message.text(), result.turns);
+
+// `result.messages` is the whole conversation, ending with the final assistant
+// turn — push a follow-up question onto it and keep going.
+# Ok(())
+# }
+```
+
+Three things worth knowing, because they're the ones a hand-written loop usually gets wrong:
+
+- **Tool failures are data, not errors.** A handler `Err`, an input that doesn't deserialize into the handler's argument type, and a call to a tool you never registered all come back to the model as a `tool_result` with `is_error: true` and an explanation — the run continues, and the model gets to correct itself. Nothing is silently dropped.
+- **Parallel tool calls just work.** Every `tool_use` block in a response is executed concurrently, and all results go back in one user message, in the order the calls appeared.
+- **The runner doesn't judge the outcome.** Any stop reason other than `tool_use` ends the run and is handed back as-is, `refusal` and `max_tokens` included; you read `result.message.stop_reason`. Only hitting `max_turns` while the model is *still* asking for tools is an error — `Error::ToolRunner { turns, .. }`.
+
+Richer per-turn hooks — approving a call before it runs, rewriting a result on the way back — are on the roadmap. `on_turn` is the observer; it can watch, not veto.
 
 ## Typed schemas — `schemars` feature
 
@@ -382,7 +427,7 @@ Two honest caveats for edge/browser deployments: the retry loop cannot sleep on 
 
 ## More examples
 
-Runnable programs live in [`examples/`](examples): `basic`, `streaming`, `tool_use`, `thinking`, `prompt_caching`, and `structured_output`, plus `typed_parse` and `typed_tools` on the `schemars` feature. There's also `live_smoke` — a manual end-to-end check that makes real API calls (token count + non-streaming + streaming). Run one with:
+Runnable programs live in [`examples/`](examples): `basic`, `streaming`, `tool_use`, `thinking`, `prompt_caching`, and `structured_output`, plus `typed_parse`, `typed_tools`, and `tool_runner` (a two-tool weather agent on the runner) on the `schemars` feature. There's also `live_smoke` — a manual end-to-end check that makes real API calls (token count + non-streaming + streaming). Run one with:
 
 ```sh
 ANTHROPIC_API_KEY=sk-ant-... cargo run --example streaming
@@ -401,7 +446,7 @@ cargo generate --git https://github.com/singhpratech/crimson-crab-mcp-template
 
 ## Roadmap
 
-Shipping fast and iterating; spec fidelity and release cadence are the whole point. `schemars`-derived schemas — `parse::<T>()` and `Tool::from_type::<T>()` — landed in 0.2.0. Still on deck: the Files API (beta), a `#[tool]` attribute macro, a tool-runner loop helper, a `batches().poll_until_ended()` convenience, the Admin/Usage API, and Vertex/Bedrock transports. The `model` field is an open string everywhere, so any model Anthropic ships works today with zero changes.
+Shipping fast and iterating; spec fidelity and release cadence are the whole point. `schemars`-derived schemas — `parse::<T>()` and `Tool::from_type::<T>()` — landed in 0.2.0. The tool runner (`messages().runner`) landed next. Still on deck: the Files API (beta), a `#[tool]` attribute macro, approval and result-rewriting hooks for the runner, a `batches().poll_until_ended()` convenience, the Admin/Usage API, and Vertex/Bedrock transports. The `model` field is an open string everywhere, so any model Anthropic ships works today with zero changes.
 
 ## Minimum supported Rust version
 
