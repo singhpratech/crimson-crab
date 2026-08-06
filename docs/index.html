@@ -583,7 +583,7 @@
       <div class="tabs" role="tablist" aria-label="Code examples">
         <button class="tab" role="tab" id="tab-basic" aria-controls="p-basic" aria-selected="true">Basic message</button>
         <button class="tab" role="tab" id="tab-stream" aria-controls="p-stream" aria-selected="false" tabindex="-1">Streaming</button>
-        <button class="tab" role="tab" id="tab-tool" aria-controls="p-tool" aria-selected="false" tabindex="-1">Tool loop</button>
+        <button class="tab" role="tab" id="tab-tool" aria-controls="p-tool" aria-selected="false" tabindex="-1">Tool runner</button>
         <button class="tab" role="tab" id="tab-typed" aria-controls="p-typed" aria-selected="false" tabindex="-1">Typed output</button>
       </div>
 
@@ -635,30 +635,31 @@
         </div>
 
         <div class="panel" id="p-tool" role="tabpanel" aria-labelledby="tab-tool" tabindex="0" hidden>
-<pre><code><span class="k">use</span> crimson_crab::{<span class="t">Tool</span>, <span class="t">MessagesRequest</span>, <span class="t">StopReason</span>, model_ids};
+<pre><code><span class="c">// The agentic loop, driven for you (new in 0.3). The manual</span>
+<span class="c">// loop stays fully supported if you'd rather own the control flow.</span>
 
-<span class="k">let</span> weather = <span class="t">Tool</span>::<span class="fn">new</span>(
-    <span class="s">"get_weather"</span>,
-    <span class="s">"Look up the current weather for a city"</span>,
-    <span class="m">serde_json::json!</span>({
-        <span class="s">"type"</span>: <span class="s">"object"</span>,
-        <span class="s">"properties"</span>: { <span class="s">"city"</span>: { <span class="s">"type"</span>: <span class="s">"string"</span> } },
-        <span class="s">"required"</span>: [<span class="s">"city"</span>],
-    }),
-);
+<span class="c">/// The arguments of the weather tool.</span>
+<span class="pu">#[</span><span class="k">derive</span><span class="pu">(</span>serde::<span class="t">Deserialize</span>, schemars::<span class="t">JsonSchema</span><span class="pu">)]</span>
+<span class="k">struct</span> <span class="t">GetWeather</span> {
+    <span class="c">/// The city to look up, e.g. "Paris".</span>
+    city: <span class="t">String</span>,
+}
 
-<span class="k">let</span> req = <span class="t">MessagesRequest</span>::<span class="fn">builder</span>()
-    .<span class="fn">model</span>(model_ids::<span class="t">CLAUDE_SONNET_5</span>)
-    .<span class="fn">max_tokens</span>(<span class="n">1024</span>)
-    .<span class="fn">tools</span>(<span class="m">vec!</span>[weather.<span class="fn">into</span>()])
-    .<span class="fn">messages</span>(messages.<span class="fn">clone</span>())
-    .<span class="fn">build</span>()<span class="pu">?</span>;
+<span class="k">let</span> result = client
+    .<span class="fn">messages</span>()
+    .<span class="fn">runner</span>(req)
+    <span class="c">// A tool and its handler, registered together — they can't drift.</span>
+    .<span class="fn">tool</span>(
+        <span class="t">Tool</span>::<span class="fn">from_type</span>::&lt;<span class="t">GetWeather</span>&gt;(<span class="s">"get_weather"</span>, <span class="s">"Get the weather"</span>),
+        |args: <span class="t">GetWeather</span>| <span class="k">async move</span> {
+            <span class="t">Ok</span>::&lt;_, <span class="t">String</span>&gt;(<span class="m">format!</span>(<span class="s">"22C in {}"</span>, args.city))
+        },
+    )
+    .<span class="fn">max_turns</span>(<span class="n">8</span>)
+    .<span class="fn">run</span>()                <span class="c">// tool errors go back to the model, not to you;</span>
+    .<span class="k">await</span><span class="pu">?</span>;              <span class="c">// parallel tool calls answered in wire order</span>
 
-<span class="k">let</span> msg = client.<span class="fn">messages</span>().<span class="fn">create</span>(<span class="pu">&amp;</span>req).<span class="k">await</span><span class="pu">?</span>;
-
-<span class="k">if</span> msg.stop_reason == <span class="t">Some</span>(<span class="t">StopReason</span>::<span class="t">ToolUse</span>) {
-    <span class="c">// dispatch each ToolUse block, append its ToolResult, and loop</span>
-}</code></pre>
+<span class="m">println!</span>(<span class="s">"{} (after {} turns)"</span>, result.message.<span class="fn">text</span>(), result.turns);</code></pre>
         </div>
 
         <div class="panel" id="p-typed" role="tabpanel" aria-labelledby="tab-typed" tabindex="0" hidden>
@@ -717,6 +718,11 @@
       <div class="row" role="row">
         <span class="cell aspect" role="cell">Typed output &amp; tools from Rust structs</span>
         <span class="cell" role="cell"><span class="v yes ours"><span class="mark">&#9679;</span> parse::&lt;T&gt;() + derived schemas</span></span>
+        <span class="cell" role="cell"><span class="v part"><span class="mark">&#9683;</span> Varies</span></span>
+      </div>
+      <div class="row" role="row">
+        <span class="cell aspect" role="cell">Agentic tool loop driven for you</span>
+        <span class="cell" role="cell"><span class="v yes ours"><span class="mark">&#9679;</span> messages().runner() — errors go back to the model</span></span>
         <span class="cell" role="cell"><span class="v part"><span class="mark">&#9683;</span> Varies</span></span>
       </div>
       <div class="row" role="row">
@@ -834,7 +840,7 @@
     /* --- tabbed code examples --- */
     var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
     var fileName = document.getElementById("file-name");
-    var files = { "tab-basic": "basic.rs", "tab-stream": "streaming.rs", "tab-tool": "tool_use.rs", "tab-typed": "typed_parse.rs" };
+    var files = { "tab-basic": "basic.rs", "tab-stream": "streaming.rs", "tab-tool": "tool_runner.rs", "tab-typed": "typed_parse.rs" };
 
     function select(tab) {
       tabs.forEach(function (t) {
